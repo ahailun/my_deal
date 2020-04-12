@@ -1,9 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
-from Tkinter import *
+from tkinter import *
 import re
-import tkMessageBox
+from tkinter import messagebox as tkMessageBox
+#import tkMessageBox
 import socket
 import json
 import sys
@@ -27,7 +28,7 @@ def send_req_and_get_rsp(lstbox, conn, protocol_code, req_param, protocol_versio
         req_str = json.dumps(req) + "\r\n"
         conn.send(req_str)
     except socket.timeout:
-        print "time out"
+        print("time out")
         return
     rsp_str = ""
     while True:
@@ -36,7 +37,7 @@ def send_req_and_get_rsp(lstbox, conn, protocol_code, req_param, protocol_versio
         try:
             rsp_str.index('\n')
             break    
-        except Exception,e:
+        except Exception as e:
             pass
     res_dic = json_analyze_rsps(rsp_str)        #回包josn解析
     
@@ -110,7 +111,7 @@ class FT:
                 #print "获取买卖档口错误."
                 self.lstbox.insert(END, "获取买卖档口错误.")
                 return
-        except TypeError,e:
+        except TypeError as e:
             #print "股票输入错误：",e
             self.lstbox.insert(END, "股票输入错误：%s" % e)
             sys.exit()
@@ -149,7 +150,7 @@ class DEAL(threading.Thread):
         #listbox.insert(END, '###','+',self.stockcode,'+',self.meishou,'+',self.fst_price,'+',self.upline,'+',self.lowline,'+',self.controlline,'+','###')
         try:
             self.ft = FT(self.stockcode,listbox)
-        except Exception,e:
+        except Exception as e:
             #print "连接服务器错误, 检查牛牛是否开启 %s" % e
             #listbox.delete(0, END)
             listbox.insert(END, "连接服务器错误, 检查牛牛是否开启 %s" % e)
@@ -293,106 +294,43 @@ def runThread():
     th = DEAL()
     th.start()
 
-def calc():
-    try:
-        contrNUM = float(entry7.get())*(1+float(entry6.get())/100)
-        Label8_display.set(contrNUM)
-    except Exception as e:
-        Label8_display.set("计算价格出现错误")
 
 if __name__ == "__main__":
-    
-    
-#     s=FT(stock)
-#     print '1:',s.get_cur_price()
-#     print '2:',s.get_stock_gear(1)
-#     print '3:',s.get_account_info()
-#     print '4:',s.check_on_hold()
-# 
-#     DEAL_obj = DEAL(stock, lowlmt, uplmt, controlline, meishou, fst_price)
-#     DEAL_obj.trade()
     root = Tk()
-    root.title('自动化交易助手V1.0.0')
-    root.geometry("745x500+200+100")
+    root.title('自动化交易助手V2.0')
+    root.geometry("1200x500+200+100")
     root.iconbitmap(r'.\assassin.ico')
-    root.resizable(False, False)
-    root.minsize(400,300)
+    root.rowconfigure(1, weight=2)
+    root.columnconfigure(9, weight=2)
 
-    gpdm = Label(root, text ='股票代码:',font=("黑体", 9, "bold"))
-    gpdm.grid(row = 0, column = 0,sticky=E,pady=15)
-    v=StringVar()
-    entry1 = Entry(root, width=8,textvariable=v)
-    entry1.grid(row=0, column=1, sticky=W)
-    entry1.focus_set()
-    
-    ms = Label(root, text = '每手:',font=("黑体", 9, "bold"))
-    ms.grid(row = 0, column = 2,sticky=E)
-    entry2 = Entry(root, width=8)
-    entry2.grid(row=0, column=3, sticky=W)
-    
-    gmj = Label(root, text = '购买价:',font=("黑体", 9, "bold"))
-    gmj.grid(row =0, column = 4,sticky=E)
-    entry3 = Entry(root, width=8)
-    entry3.grid(row=0, column=5,sticky=W)
-    
-    shx = Label(root, text = '上限:',font=("黑体", 9, "bold"))
-    shx.grid(row = 0, column = 6,sticky=E)
-    v4=StringVar()
-    entry4 = Entry(root, width=5,textvariable=v4)
-    entry4.grid(row=0, column=7, sticky=W)
-    v4.set("15")
-    bfh1 = Label(root, text = '%')
-    bfh1.grid(row = 0, column = 7,sticky=E)
-    
-    xx = Label(root, text = '下限：',font=("黑体", 9, "bold"))
-    xx.grid(row =0, column = 8,sticky=E)
-    v5=StringVar()
-    entry5 = Entry(root, width=5,textvariable=v5)
-    entry5.grid(row=0, column=9, sticky=W)
-    v5.set("8")
-    bfh2 = Label(root, text = '%')
-    bfh2.grid(row = 0, column = 9,sticky=E)
-    
-    kzx = Label(root, text = '控制限：',font=("黑体", 9, "bold"))
-    kzx.grid(row =0, column = 10,sticky=E)
-    v6=StringVar()
-    entry6 = Entry(root, width=5,textvariable=v6)
-    entry6.grid(row=0, column=11, sticky=W)
-    v6.set("2")
-    bfh3 = Label(root, text = '%')
-    bfh3.grid(row =0, column = 11,sticky=E)
-    
-    #entry6.bind("<KeyRelease-Return>", runThread)    #bind <Enter>
-
-    button = Button(root, text="开始交易", width=11, font=("黑体", 9, "bold"),command=runThread)
-    button.grid(row=0, column=15,sticky=E,columnspan=2)
-
-    #button.bind('<Button-1>', runThread)    #bind left mouseclick
-
+    gpdm = Label(root, text=' 股票代码:',font=("黑体", 12, "bold"))
+    gpdm.grid(row=0, column=0, sticky=E+N+S+W)  
+    gpdm_entry = Entry(root)
+    gpdm_entry.grid(row=0, column=1, sticky=E+N+S+W)
+    gpdm_entry.focus_set()
+    gmsl = Label(root, text='  购买数量(手):',font=("黑体", 12, "bold"))
+    gmsl.grid(row=0, column=2, sticky=E+N+S+W)
+    gmsl_entry = Entry(root)
+    gmsl_entry.grid(row=0, column=3)
+    mbz = Label(root, text='  每笔赚:',font=("黑体", 12, "bold"))
+    mbz.grid(row =0, column=4, sticky=E+N+S+W)
+    mbz_entry3= Entry(root)
+    mbz_entry3.grid(row=0, column=5, sticky=E+N+S+W)
+    zsx = Label(root, text='  止损线：',font=("黑体", 12, "bold"))
+    zsx.grid(row =0, column=6, sticky=E+N+S+W)
+    defalut_zsx = StringVar()
+    zsx_entry = Entry(root, textvariable=defalut_zsx, width=5)
+    zsx_entry.grid(row=0, column=7, sticky=E+N+S+W)
+    defalut_zsx.set("2")
+    zsx_bfh = Label(root, text='%')
+    zsx_bfh.grid(row=0, column=8, sticky=E+N+S+W)
+    button = Button(root, text="开始交易", font=("黑体", 12, "bold"), command=runThread)
+    button.grid(row=0, column=9, sticky=E+N+S+W, ipadx=30)
     scrollbar = Scrollbar(root, orient=VERTICAL)
-    listbox = Listbox(root, width=55, height=23,yscrollcommand = scrollbar.set)
-    listbox.grid(row=1, column=0, columnspan=7, rowspan=15, sticky=W, padx=10, pady=5)
+    listbox = Listbox(root, width=100, height=23, yscrollcommand = scrollbar.set)
+    listbox.grid(row=1, column=0, columnspan=18, rowspan=15, sticky=E+N+S+W, padx=10, pady=5)
     listbox.insert(END, '')
-    scrollbar.grid(row=1, column=7,  rowspan=15, sticky=W+N+S, pady=5)
+    scrollbar.grid(row=1, column=18,  rowspan=15, sticky=E+N+S+W, pady=5)
     scrollbar.config(command=listbox.yview)
-    
-    Label(root,text="交易价格:", font=("黑体", 9, "bold")).grid(row = 1, column = 8)
-    entry7 = Entry(root, width=15)
-    entry7.grid(row=1, column=9, columnspan=3)
-    Label(root,text="预期价格:", font=("黑体", 9, "bold")).grid(row = 2, column = 8)
-    
-    global display
-    Label8_display = StringVar()
-    Label8 = Label(root, width=15, relief = 'sunken', borderwidth = 3, anchor = SE)
-    Label8.grid(row=2, column=9, columnspan=3)
-    Label8['textvariable'] = Label8_display
 
-    global display2
-    Label9_display = StringVar()
-    Label9 = Label(root, width=11, relief = 'sunken', borderwidth = 3, anchor = SE)
-    Label9.grid(row=1, column=15, columnspan=5)
-    Label9['textvariable'] = Label9_display
-    
-    button = Button(root, text="计算价格", width=11,font=("黑体", 9, "bold"),command=calc)
-    button.grid(row=2, column=15,sticky=W,columnspan=5, rowspan = 1)
     root.mainloop()
