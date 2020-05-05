@@ -34,8 +34,44 @@ hold = False
 trade_side = TrdSide.SELL if hold else TrdSide.BUY
 last_sell_price = 0.000
 
-#解锁交易
-pwd_unlock = '140108'
+#交易
+is_debug = True
+PWD_UNLOCK = '140108'
+TRD_ENV = TrdEnv.REAL if is_debug else TrdEnv.SIMULATE
+
+
+def main(meibi_zhuan, code, YJ=6.5， ZHISUNXIAN=10):
+    '''
+    code:HK.00700
+    YJ：佣金，待确认
+    ZHISUNXIAN:取整，例如10意为10%
+    plVal_or_None:盈亏金额
+    qty_or_None:数量
+    plRatio：盈亏比例
+
+    '''
+    (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(log_2_file, quote_ctx, stock_num)
+    if iHave:
+        log_2_file.info('持有股票:{code},数量:{qty_or_None}'.format(code=code, qty_or_None=qty_or_None))
+        if plVal_or_None - float(meibi_zhuan) - YJ - 1.000 > 0 or  plRatiov > ZHISUNXIAN:
+            #达到目标利润则以当前价格卖掉
+            #超过止损线则以当前价格卖掉
+            realTimePrice = real_time_price(quote_ctx, stock_num)
+            log_2_file.info('准备卖出：股票:{code},当前价格:{realTimePrice},交易数量:{qty_or_None},盈亏金额:{plVal_or_None},盈亏比例:{}'.format(\
+                            code=code, realTimePrice=realTimePrice, qty_or_None=qty_or_None, plVal_or_None=plVal_or_None, plRatiov=plRatiov
+                            ))
+            ret, data = place_order(realTimePrice, qty_or_None, code, TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
+            if ret:
+                orderId = data['order_id'].item()
+                log_2_file.info('下单成功，订单号:{orderId}.'.format(orderId=orderId))
+            else:
+                lastErrMsg = data['last_err_msg'].item()
+                log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=lastErrMsg))
+                #待增加微信通知功能
+    else:
+        log_2_file.info('没有股票:{code},数量:{qty_or_None}'.format(code=code, qty_or_None=qty_or_None))
+        
+
 
 def real_time_price(quote_ctx, stock_num):
     '''
@@ -51,24 +87,30 @@ def real_time_price(quote_ctx, stock_num):
         subscribe_obj.subscribe_mystock()
     cur_price_df = quote_ctx.get_stock_quote(code_list)[1]
     return cur_price_df.iloc[0].iat[3].item()
+    #return cur_price_df['pl_val'].item()
 
-def i_have_stock(log_2_file, quote_ctx, stock_num):
+def i_have_the_stock(log_2_file, quote_ctx, stock_num):
     '''
     检查本账户下是否有持仓该股票
+    返回：(param1, param2, param3， param4) -> (str, float, float, int)
     '''
-    quote_ctx.unlock_trade(pwd_unlock)
+    quote_ctx.unlock_trade(PWD_UNLOCK)
     ret, data = quote_ctx.position_list_query()
     tmp_stock_list = []
     for i in range(0, len(data)):
-        tmp_stock_list.append(data.iloc[i].iat[0])
+        #tmp_stock_list.append(data.iloc[i].iat[0])
+        tmp_stock_list.append(data['code'].item())
     log_2_file.warn('账户下持有{n}个股票tmp_stock_list'.format(n=len(data), tmp_stock_list=str(tmp_stock_list)))
     dst_stock_num = get_code_list(stock_num)
     log_2_file.info('目标股票是dst_stock_num'.format(dst_stock_num=dst_stock_num))
     if dst_stock_num in tmp_stock_list:
-        return True
-    return False
+        log_2_file.info('已持有该股票dst_stock_num'.format(dst_stock_num=dst_stock_num))
+        return (True, data['pl_val'].item(),  data['qty'].item(), data['pl_ratio'].item())
+    log_2_file.info('未持有该股票dst_stock_num'.format(dst_stock_num=dst_stock_num))
+    return (False, None, None, None)
     
     #quote_ctx.close()
+
 
 
 def aaaa(log_2_file, func, t, n):
