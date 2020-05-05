@@ -42,6 +42,7 @@ def get_code_list(stock_code):
         code_list = ['US.%s' % stock_code]
     else:
         code_list = []  #其他市场类型的股票暂不支持
+        raise('找不到该股票的市场列表!')
     return code_list
 
 if __name__ == "__main__":

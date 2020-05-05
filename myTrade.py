@@ -32,11 +32,15 @@ NEED_NOT_SUBSCRIBE = 2
 #持有股票时需要卖，不持有股票时需要买
 hold = False 
 trade_side = TrdSide.SELL if hold else TrdSide.BUY
+last_sell_price = 0.000
 
+#解锁交易
+pwd_unlock = '140108'
 
 def real_time_price(quote_ctx, stock_num):
     '''
     若持有该股票，则查询该股票实时价格，准备挂单卖出
+    返回 406.0 <class 'float'>
     '''
     subscribe_obj = SubsCribe(quote_ctx, stock_num)
     subscribe_obj.query_my_subscription()
@@ -47,6 +51,25 @@ def real_time_price(quote_ctx, stock_num):
         subscribe_obj.subscribe_mystock()
     cur_price_df = quote_ctx.get_stock_quote(code_list)[1]
     return cur_price_df.iloc[0].iat[3].item()
+
+def i_have_stock(log_2_file, quote_ctx, stock_num):
+    '''
+    检查本账户下是否有持仓该股票
+    '''
+    quote_ctx.unlock_trade(pwd_unlock)
+    ret, data = quote_ctx.position_list_query()
+    tmp_stock_list = []
+    for i in range(0, len(data)):
+        tmp_stock_list.append(data.iloc[i].iat[0])
+    log_2_file.warn('账户下持有{n}个股票tmp_stock_list'.format(n=len(data), tmp_stock_list=str(tmp_stock_list)))
+    dst_stock_num = get_code_list(stock_num)
+    log_2_file.info('目标股票是dst_stock_num'.format(dst_stock_num=dst_stock_num))
+    if dst_stock_num in tmp_stock_list:
+        return True
+    return False
+    
+    #quote_ctx.close()
+
 
 def aaaa(log_2_file, func, t, n):
     '''
