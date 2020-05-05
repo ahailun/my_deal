@@ -2,9 +2,11 @@
 # -*- coding: utf8 -*-
 
 from tkinter import * 
+from futu import *
 from tkinter import messagebox as tkMessageBox
 import re, socket, json, sys, threading, time
 from logger import Logger
+from common import is_HK_mkt, is_US_mkt, get_code_list
 from config import *
 
 log_2_file =  Logger()
@@ -19,13 +21,32 @@ subscriptime = 0
 cycle_period_count = 0
 cycle_period_start = time.time()
 
+ #0, 订阅额度还有空余
+ #1，订阅额度已无空余
+ #2，已订阅过，无须再次订阅
+NEED_SUBSCRIBE = 0        
+CAN_NOT_SUBSCRIBE = 1   
+NEED_NOT_SUBSCRIBE = 2
+
 #是否持有股票，False为不持有，Ture为持有
 #持有股票时需要卖，不持有股票时需要买
 hold = False 
 trade_side = TrdSide.SELL if hold else TrdSide.BUY
 
 
-
+def real_time_price(quote_ctx, stock_num):
+    '''
+    若持有该股票，则查询该股票实时价格，准备挂单卖出
+    '''
+    subscribe_obj = SubsCribe(quote_ctx, stock_num)
+    subscribe_obj.query_my_subscription()
+    if subscribe_obj.sub_status == NEED_SUBSCRIBE:
+        subscribe_obj.subscribe_mystock()
+    if subscribe_obj.sub_status == CAN_NOT_SUBSCRIBE:
+        subscribe_obj.unsubscribe_mystock_all()
+        subscribe_obj.subscribe_mystock()
+    cur_price_df = quote_ctx.get_stock_quote(code_list)[1]
+    return cur_price_df.iloc[0].iat[3].item()
 
 def aaaa(log_2_file, func, t, n):
     '''
@@ -48,10 +69,10 @@ def aaaa(log_2_file, func, t, n):
             cycle_period_count = 0
 
 
-class SubsCribe:
-    def __init__(self, quote_ctx, stock_code, writer_handler):
+class SubsCribe(object):
+    def __init__(self, quote_ctx, stock_code, writer_handler=log_2_file):
         self.quote_ctx = quote_ctx
-        self.stock_code = stock_code
+        self.stock_code = stock_code.strip()
         self.writer_handler = writer_handler
         self.sub_status = None
     
@@ -60,11 +81,16 @@ class SubsCribe:
         if ret == RET_OK:
             used_subcrip_count = data.get('total_used')
             remain_subcrip_count  = data.get('remain', stard_subscrip_num_level)
-            if int(remain_subcrip_count) <= 0:
+            if int(remain_subcrip_count) > 0:
                 self.writer_handler.info('当前已使用了{used}次订阅额度，剩余{left}次。'\
                     .format(used=str(int(used_subcrip_count) + int(remain_subcrip_count)), left=str(remain_subcrip_count))
                     )
-                self.sub_status = CAN_SUBSCRIBE
+                my_subscribe_list = data.get('sub_list').get('QUOTE'))
+                self.writer_handler.info('已订阅列表为sub_list_QUOTE'.format(sub_list_QUOTE=my_subscribe_list))
+                if self.stock_code in my_subscribe_list:
+                    self.sub_status = NEED_NOT_SUBSCRIBE
+                else:
+                    self.sub_status = NEED_SUBSCRIBE
             else:
                 self.writer_handler.warn('当前订阅额度已满{}，等待自动取消原订阅后再订阅{code}。'\
                     .format(used=str(int(used_subcrip_count) + int(remain_subcrip_count)), code=self.stock_code)
@@ -84,7 +110,7 @@ class SubsCribe:
         try_sub_count = 0
         self.writer_handler.info('开始订阅{code}。'.format(code=self.stock_code))
         while True:
-            (ret, err_message) = self.quote_ctx.subscribe(['{US_HK_NAME}'.format(US_HK_NAME=self.stock_code)],\
+            (ret, err_message) = self.quote_ctx.subscribe(['{US_HK_NAME}'.format(US_HK_NAME=get_code_list(self.stock_code))],\
                                      [SubType.QUOTE])
             subscriptime = time.time()
             if ret == RET_OK:
@@ -97,6 +123,8 @@ class SubsCribe:
             else:
                 self.writer_handler.error('再次尝试自动订阅{code}仍然失败，原因{fail_reason}。'.format(code=self.stock_code, fail_reason=err_message))
                 return ret, err_message
+    
+
 
 
 if __name__ == "__main__":
