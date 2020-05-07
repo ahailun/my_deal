@@ -48,7 +48,7 @@ def main(meibi_zhuan, code, YJ=6.5， ZHISUNXIAN=10):
     plVal_or_None:盈亏金额
     qty_or_None:数量
     plRatio：盈亏比例
-
+    Q:盈亏规则挂单后，突然股价跌破止损线的情况？？？
     '''
     (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(log_2_file, quote_ctx, stock_num)
     if iHave:
@@ -70,7 +70,7 @@ def main(meibi_zhuan, code, YJ=6.5， ZHISUNXIAN=10):
                 #待增加微信通知功能
     else:
         log_2_file.info('没有股票:{code},数量:{qty_or_None}'.format(code=code, qty_or_None=qty_or_None))
-        
+
 
 
 def real_time_price(quote_ctx, stock_num):
