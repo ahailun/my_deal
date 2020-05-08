@@ -23,13 +23,32 @@ YJ = {
     'HK': {},
 }
 
-def myYjNow(stock_num, qt):
+def myYjNow(stock_num, now_qty, history_qty):
     cur_mkt = get_mkt(stock_num).get('MKT')
     price_ladder = YJ.get(cur_mkt, None)
     for i in sorted(price_ladder, reverse=True) : 
         print(i, price_ladder[i])
 
-
+def get_cur_month_deal_list(trd_ctx, pwd_unlock,start_tm=None, end_tm=None):
+    '''
+    功能：获取本月成交数量
+    限制：请求协议ID:2222, 30秒内请求最多10次，若只在卖出时调用可不考虑限制条件
+         quote_ctx:OpenUSTradeContext/OpenHKTradeContext
+    返回：成交总数(美股：总股数，港股：暂未知)
+    '''
+    tmp_month_qty = []
+    if not start_tm:
+        start_tm=time.strftime("%Y-%m-01 00:00:00",time.localtime()) 
+    if not end_tm:
+        end_tm = time.strftime("%Y-%m-%d %X",time.localtime())
+    trd_ctx.unlock_trade(pwd_unlock)
+    ret, data = trd_ctx.history_deal_list_query(start=start_tm,end=end_tm)
+    if ret == 0:
+        for index, row in data.iterrows():
+            tmp_month_qty.append(row['qty'])
+        return sum(tmp_month_qty)
+    else:
+        print('请求历史成交数据错误')
 
 
 def is_HK_mkt(num):
