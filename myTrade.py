@@ -40,10 +40,10 @@ PWD_UNLOCK = '140108'
 TRD_ENV = TrdEnv.REAL if is_debug else TrdEnv.SIMULATE
 
 
-def main(meibi_zhuan, code, YJ=6.5， ZHISUNXIAN=10):
+def main(meibi_zhuan, code, YJ, ZHISUNXIAN=10):
     '''
     code:HK.00700
-    YJ：佣金，待确认
+    YJ：单程佣金
     ZHISUNXIAN:取整，例如10意为10%
     plVal_or_None:盈亏金额
     qty_or_None:数量
@@ -53,7 +53,7 @@ def main(meibi_zhuan, code, YJ=6.5， ZHISUNXIAN=10):
     (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(log_2_file, quote_ctx, stock_num)
     if iHave:
         log_2_file.info('持有股票:{code},数量:{qty_or_None}'.format(code=code, qty_or_None=qty_or_None))
-        if plVal_or_None - float(meibi_zhuan) - YJ - 1.000 > 0 or  plRatiov > ZHISUNXIAN:
+        if plVal_or_None - float(meibi_zhuan) - YJ - YJ - 1.000 > 0 or  plRatio > ZHISUNXIAN:
             #达到目标利润则以当前价格卖掉
             #超过止损线则以当前价格卖掉
             realTimePrice = real_time_price(quote_ctx, stock_num)

@@ -23,13 +23,8 @@ YJ = {
     'HK': {},
 }
 
-def myYjNow(stock_num, now_qty, history_qty):
-    cur_mkt = get_mkt(stock_num).get('MKT')
-    price_ladder = YJ.get(cur_mkt, None)
-    for i in sorted(price_ladder, reverse=True) : 
-        print(i, price_ladder[i])
 
-def get_cur_month_deal_list(trd_ctx, pwd_unlock,start_tm=None, end_tm=None):
+def get_cur_month_deal_total(trd_ctx, pwd_unlock,start_tm=None, end_tm=None):
     '''
     功能：获取本月成交数量
     限制：请求协议ID:2222, 30秒内请求最多10次，若只在卖出时调用可不考虑限制条件
@@ -87,5 +82,26 @@ def get_code_list(stock_code):
         raise Exception('找不到该股票的市场列表!')
     return code_list
 
+def myYjNow(trd_ctx, pwd_unlock, stock_num, now_qty):
+    cur_mkt = get_mkt(stock_num).get('MKT')
+    price_ladder = YJ.get(cur_mkt, None)
+    #month_qty = get_cur_month_deal_total(trd_ctx, pwd_unlock)
+    price_ladder_price = []
+    price_ladder_num = []
+    res = 0.000 
+    for i in sorted(price_ladder, reverse=False): 
+        price_ladder_price.append(i)
+        price_ladder_num.append(price_ladder[i][0])
+    #print(price_ladder_price,price_ladder_num)
+    if not len(price_ladder_price) == len(price_ladder_num):
+        return
+    for idx in range(0, len(price_ladder_price)): 
+        if i>price_ladder_num[idx]:  
+            #print('i:',i,'price_ladder_num:',price_ladder_num[idx],'price_ladder_price:',price_ladder_price[idx],'tt:',(i-price_ladder_num[idx]+1)*price_ladder_price[idx]  )
+            res+=(i-price_ladder_num[idx]+1)*price_ladder_price[idx]  
+            i=price_ladder_num[idx]-1
+    #print(res) 
+    return res
+
 if __name__ == "__main__":
-    myYjNow('stocknum', 'qt')
+    myYjNow('trd_ctx', 'pwd_unlock', 'stocknum', 'now_qty')
