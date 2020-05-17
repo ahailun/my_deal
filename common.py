@@ -1,10 +1,11 @@
 import re
+import time
 from logger import Logger
-from futu import *
+from futu import OpenUSTradeContext, OpenHKTradeContext, OrderStatus
 
 #美/港股
-US_STOCK = {'MKT':'US', 'trd_ctx':OpenUSTradeContext,'LASTTIME_BUY_PRIC':'cost_price'}
-HK_STOCK = {'MKT':'HK', 'trd_ctx':OpenHKTradeContext,'LASTTIME_BUY_PRIC':'cost_price'}
+US_STOCK = {'MKT':'US', 'trd_ctx':OpenUSTradeContext(host='127.0.0.1', port=11111),'LASTTIME_BUY_PRIC':'cost_price'}
+HK_STOCK = {'MKT':'HK', 'trd_ctx':OpenHKTradeContext(host='127.0.0.1', port=11111),'LASTTIME_BUY_PRIC':'cost_price'}
 
 #佣金
 YJ = {
@@ -36,7 +37,6 @@ def get_cur_month_deal_total(trd_ctx, pwd_unlock,start_tm=None, end_tm=None):
         start_tm=time.strftime("%Y-%m-01 00:00:00",time.localtime()) 
     if not end_tm:
         end_tm = time.strftime("%Y-%m-%d %X",time.localtime())
-    trd_ctx.unlock_trade(pwd_unlock)
     ret, data = trd_ctx.history_deal_list_query(start=start_tm,end=end_tm)
     if ret == 0:
         for index, row in data.iterrows():
@@ -45,7 +45,7 @@ def get_cur_month_deal_total(trd_ctx, pwd_unlock,start_tm=None, end_tm=None):
     else:
         print('请求历史成交数据错误')
 
-def get_last_order_status(trd_ctx, code, TRD_ENV):
+def get_last_order_status(trd_ctx, code, pwd_unlock, TRD_ENV):
     time.sleep(1)
     # if orderid: #下单后等待1s再查询订单状态
     #     ret, data = trd_ctx.order_list_query(order_id=orderid,  trd_env=TRD_ENV)

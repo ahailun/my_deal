@@ -4,10 +4,9 @@
 from tkinter import * 
 from futu import *
 from tkinter import messagebox as tkMessageBox
-import re, socket, json, sys, threading, time
+import sys, time
 from logger import Logger
-from common import is_HK_mkt, is_US_mkt, get_code_list
-from config import *
+from common import is_HK_mkt, is_US_mkt, get_code_list_type, get_last_order_status
 
 log_2_file =  Logger()
 
@@ -28,19 +27,18 @@ NEED_SUBSCRIBE = 0
 CAN_NOT_SUBSCRIBE = 1   
 NEED_NOT_SUBSCRIBE = 2
 
-#是否持有股票，False为不持有，Ture为持有
-#持有股票时需要卖，不持有股票时需要买
-hold = False 
-trade_side = TrdSide.SELL if hold else TrdSide.BUY
-last_sell_price = 0.000
-
 #交易
 is_debug = True
 PWD_UNLOCK = '140108'
 TRD_ENV = TrdEnv.REAL if is_debug else TrdEnv.SIMULATE
 
+def unlock(trd_ctx):
+    ret, date = trd_ctx.unlock_trade(pwd_unlock)
+    if ret:
+        return True
+    return False
 
-def main(quote_ctx, meibi_zhuan, code, YJ, ZHISUNXIAN, pwd_unlock):
+def main(trd_ctx, meibi_zhuan, code, YJ, ZHISUNXIAN, pwd_unlock):
     '''
     code:HK.00700
     YJ：单程佣金
@@ -50,10 +48,8 @@ def main(quote_ctx, meibi_zhuan, code, YJ, ZHISUNXIAN, pwd_unlock):
     plRatio：盈亏比例
     Q:盈亏规则挂单后，突然股价跌破止损线的情况： plRatio > ZHISUNXIAN
     '''
-    orderId = ''
-    quote_ctx.unlock_trade(pwd_unlock)
-    (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(log_2_file, quote_ctx, code)
-    last_order_status = get_last_order_status(quote_ctx, orderId, code, pwd_unlock, TRD_ENV)
+    (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(log_2_file, trd_ctx, code)
+    last_order_status = get_last_order_status(trd_ctx, code, pwd_unlock, TRD_ENV)
     if iHave:
         log_2_file.info('已持有股票:{code},数量:{qty_or_None}'.format(code=code, qty_or_None=qty_or_None))
         log_2_file.info('在我的订单列表中，该股票{}最后一次订单状态是{}'.format(code, last_order_status))
@@ -61,11 +57,11 @@ def main(quote_ctx, meibi_zhuan, code, YJ, ZHISUNXIAN, pwd_unlock):
             if plVal_or_None - float(meibi_zhuan) - YJ - YJ - 1.000 > 0:
                 #达到目标利润则以当前价格卖掉
                 #超过止损线则以当前价格卖掉
-                realTimePrice = real_time_price(quote_ctx, code)
+                realTimePrice = real_time_price(trd_ctx, code)
                 log_2_file.info('准备卖出：股票:{code},当前价格:{realTimePrice},交易数量:{qty_or_None},盈亏金额:{plVal_or_None},盈亏比例:{}'.format(\
                                 code=code, realTimePrice=realTimePrice, qty_or_None=qty_or_None, plVal_or_None=plVal_or_None, plRatiov=plRatiov
                                 ))
-                ret, data = quote_ctx.place_order(realTimePrice, qty_or_None, code, TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
+                ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, code, TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret:
                     orderId = data['order_id'].item()
                     log_2_file.info('下单成功，订单号:{}, 卖出价格{}，卖出数量{}，挂单类型{}.'.format(orderId, realTimePrice, qty_or_None, TrdSide.SELL))
@@ -75,7 +71,7 @@ def main(quote_ctx, meibi_zhuan, code, YJ, ZHISUNXIAN, pwd_unlock):
                     #待增加微信通知功能
             if  plRatio > ZHISUNXIAN:
                 log_2_file.warn('当前交易单的盈亏比例为：{}，超过止损线：{}，以止损价挂单。'.format(plRatio, ZHISUNXIAN))
-                ret, data = quote_ctx.place_order(realTimePrice, qty_or_None, code, TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
+                ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, code, TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret:
                     orderId = data['order_id'].item()
                     log_2_file.info('挂单成功，订单号:{}, 卖价{}，数量{}，挂单类型{}'.format(orderId, realTimePrice, qty_or_None, TrdSide.SELL))
@@ -117,12 +113,11 @@ def real_time_price(quote_ctx, stock_num):
     return cur_price_df.iloc[0].iat[3].item()
     #return cur_price_df['pl_val'].item()
 
-def i_have_the_stock(log_2_file, quote_ctx, stock_num):
+def i_have_the_stock(quote_ctx, stock_num):
     '''
     获取账户的持仓列表 检查是否持有该股票stock_num
     返回：(param1, param2, param3， param4) -> (str, float, float, int)
     '''
-    quote_ctx.unlock_trade(PWD_UNLOCK)
     ret, data = quote_ctx.position_list_query()
     tmp_stock_list = []
     for i in range(0, len(data)):
@@ -136,34 +131,31 @@ def i_have_the_stock(log_2_file, quote_ctx, stock_num):
         return (True, data['pl_val'].item(),  data['qty'].item(), data['pl_ratio'].item())
     log_2_file.info('未持有该股票dst_stock_num'.format(dst_stock_num=dst_stock_num))
     return (False, None, None, None)
-    
-    #quote_ctx.close()
 
-def my_order_list_query():
+def wrapper(func, t, n, trd_ctx):
     '''
-    获取账户的交易订单列表
-    '''
-
-def aaaa(log_2_file, func, t, n):
-    '''
-    t时间间隔内的最多n次交易
+    t时间间隔内的最多执行n次func函数
     '''
     global cycle_period_start
     global cycle_period_count
-    while need_to_do():
-        cycle_period_now = time.time()
-        if cycle_period_now - cycle_period_start <= int(t):
-            if cycle_period_count < int(n):
+    while True:
+        try:
+            cycle_period_now = time.time()
+            if cycle_period_now - cycle_period_start <= int(t):
+                if cycle_period_count < int(n):
+                    func()
+                    #cycle_period_start = time.time()
+                    cycle_period_count += 1
+                else:
+                    log_2_file.warn('当前{}s内已执行{}次，无法交易需等待下一次交易机会。'.format(t, n))
+            else:
                 func()
                 cycle_period_start = time.time()
-                cycle_period_count += 1
-            else:
-                log_2_file.warn('当前{period_t}s内已执行{period_n}次，无法交易需等待下一次交易机会。'.format(period_t=t, period_n=n))
-        else:
-            func()
-            cycle_period_start = time.time()
-            cycle_period_count = 0
-
+                cycle_period_count = 0
+        except Exception as e:
+            log_2_file.info('程序遇到异常:{}, 退出主程序'.format(str(e)))
+            trd_ctx.close()
+            sys.exit(1)
 
 class SubsCribe(object):
     def __init__(self, quote_ctx, stock_code, writer_handler=log_2_file):
@@ -206,7 +198,7 @@ class SubsCribe(object):
         try_sub_count = 0
         self.writer_handler.info('开始订阅{code}。'.format(code=self.stock_code))
         while True:
-            (ret, err_message) = self.quote_ctx.subscribe(['{US_HK_NAME}'.format(US_HK_NAME=get_code_list(self.stock_code))],\
+            (ret, err_message) = self.quote_ctx.subscribe(['{US_HK_NAME}'.format(US_HK_NAME=get_code_list_type(self.stock_code))],\
                                      [SubType.QUOTE])
             subscriptime = time.time()
             if ret == RET_OK:
