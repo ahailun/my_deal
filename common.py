@@ -45,6 +45,27 @@ def get_cur_month_deal_total(trd_ctx, pwd_unlock,start_tm=None, end_tm=None):
     else:
         print('请求历史成交数据错误')
 
+def get_last_order_status(trd_ctx, code, TRD_ENV):
+    time.sleep(1)
+    # if orderid: #下单后等待1s再查询订单状态
+    #     ret, data = trd_ctx.order_list_query(order_id=orderid,  trd_env=TRD_ENV)
+    # else:
+    start_tm = time.strftime("%Y-%m-%d 00:00:00",time.localtime())
+    end_tm = time.strftime("%Y-%m-%d %X",time.localtime())
+    ret, data = trd_ctx.order_list_query(code=code, trd_env=TRD_ENV, start=start_tm, end=end_tm)
+    if ret:
+        for index, row in data.iterrows():
+            if index==0:
+                return row['order_status']#, row['trd_side']
+    else:
+        raise Exception(data)
+
+def last_order_is_over(order_status):
+    #return order_status in ['NONE','UNSUBMITTED','SUBMIT_FAILED','FILLED_ALL','CANCELLED_PART','CANCELLED_ALL','FAILED','DISABLED','DELETED']
+    return order_status in [OrderStatus.NONE, OrderStatus.UNSUBMITTED, OrderStatus.SUBMIT_FAILED, \
+                            OrderStatus.FILLED_ALL, OrderStatus.CANCELLED_PART, OrderStatus.CANCELLED_ALL, \
+                            OrderStatus.FAILED, OrderStatus.DISABLED, OrderStatus.DELETED
+                            ]
 
 def is_HK_mkt(num):
     pattern = re.compile(r'\d+')   # 查找数字
@@ -72,7 +93,7 @@ def get_mkt(code_num):
     return cur_mkt
 
 
-def get_code_list(stock_code):
+def get_code_list_type(stock_code):
     if is_HK_mkt(stock_code):
         code_list = ['HK.%s' % stock_code]
     if is_US_mkt(stock_code):

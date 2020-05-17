@@ -40,7 +40,7 @@ PWD_UNLOCK = '140108'
 TRD_ENV = TrdEnv.REAL if is_debug else TrdEnv.SIMULATE
 
 
-def main(meibi_zhuan, code, YJ, ZHISUNXIAN=10):
+def main(quote_ctx, meibi_zhuan, code, YJ, ZHISUNXIAN, pwd_unlock):
     '''
     code:HK.00700
     YJ：单程佣金
@@ -48,34 +48,62 @@ def main(meibi_zhuan, code, YJ, ZHISUNXIAN=10):
     plVal_or_None:盈亏金额
     qty_or_None:数量
     plRatio：盈亏比例
-    Q:盈亏规则挂单后，突然股价跌破止损线的情况？？？
+    Q:盈亏规则挂单后，突然股价跌破止损线的情况： plRatio > ZHISUNXIAN
     '''
-    (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(log_2_file, quote_ctx, stock_num)
+    orderId = ''
+    quote_ctx.unlock_trade(pwd_unlock)
+    (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(log_2_file, quote_ctx, code)
+    last_order_status = get_last_order_status(quote_ctx, orderId, code, pwd_unlock, TRD_ENV)
     if iHave:
-        log_2_file.info('持有股票:{code},数量:{qty_or_None}'.format(code=code, qty_or_None=qty_or_None))
-        if plVal_or_None - float(meibi_zhuan) - YJ - YJ - 1.000 > 0 or  plRatio > ZHISUNXIAN:
-            #达到目标利润则以当前价格卖掉
-            #超过止损线则以当前价格卖掉
-            realTimePrice = real_time_price(quote_ctx, stock_num)
-            log_2_file.info('准备卖出：股票:{code},当前价格:{realTimePrice},交易数量:{qty_or_None},盈亏金额:{plVal_or_None},盈亏比例:{}'.format(\
-                            code=code, realTimePrice=realTimePrice, qty_or_None=qty_or_None, plVal_or_None=plVal_or_None, plRatiov=plRatiov
-                            ))
-            ret, data = place_order(realTimePrice, qty_or_None, code, TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
+        log_2_file.info('已持有股票:{code},数量:{qty_or_None}'.format(code=code, qty_or_None=qty_or_None))
+        log_2_file.info('在我的订单列表中，该股票{}最后一次订单状态是{}'.format(code, last_order_status))
+        if last_order_is_over(last_order_status) : #若上一次订单已经结束，则执行卖出操作
+            if plVal_or_None - float(meibi_zhuan) - YJ - YJ - 1.000 > 0:
+                #达到目标利润则以当前价格卖掉
+                #超过止损线则以当前价格卖掉
+                realTimePrice = real_time_price(quote_ctx, code)
+                log_2_file.info('准备卖出：股票:{code},当前价格:{realTimePrice},交易数量:{qty_or_None},盈亏金额:{plVal_or_None},盈亏比例:{}'.format(\
+                                code=code, realTimePrice=realTimePrice, qty_or_None=qty_or_None, plVal_or_None=plVal_or_None, plRatiov=plRatiov
+                                ))
+                ret, data = quote_ctx.place_order(realTimePrice, qty_or_None, code, TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
+                if ret:
+                    orderId = data['order_id'].item()
+                    log_2_file.info('下单成功，订单号:{}, 卖出价格{}，卖出数量{}，挂单类型{}.'.format(orderId, realTimePrice, qty_or_None, TrdSide.SELL))
+                else:
+                    lastErrMsg = data['last_err_msg'].item()
+                    log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=lastErrMsg))
+                    #待增加微信通知功能
+            if  plRatio > ZHISUNXIAN:
+                log_2_file.warn('当前交易单的盈亏比例为：{}，超过止损线：{}，以止损价挂单。'.format(plRatio, ZHISUNXIAN))
+                ret, data = quote_ctx.place_order(realTimePrice, qty_or_None, code, TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
+                if ret:
+                    orderId = data['order_id'].item()
+                    log_2_file.info('挂单成功，订单号:{}, 卖价{}，数量{}，挂单类型{}'.format(orderId, realTimePrice, qty_or_None, TrdSide.SELL))
+                else:
+                    log_2_file.info('挂单失败,失败原因{}，发送微信通知'.format(data))
+                sys.exit(1)
+        else: #若上一次订单没有结束，则继续等待
+            log_2_file.info('该股票{}最后一次订单状态仍处于挂单中，无法挂单卖出，继续等待。')
+
+    else:
+        log_2_file.info('没有持仓该股票:{code}'.format(code=code))
+        log_2_file.info('在我的订单列表中，该股票{}最后一次订单状态是{}'.format(code, last_order_status))
+        if last_order_is_over(last_order_status) : #若上一次订单已经结束，则执行买入操作
+            log_2_file.info('准备买入股票:{},当前价格:{},交易数量:{}'.format(code, realTimePrice, qty_or_None))
+            ret, data = quote_ctx.place_order(realTimePrice, qty_or_None, code, TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
             if ret:
                 orderId = data['order_id'].item()
-                log_2_file.info('下单成功，订单号:{orderId}.'.format(orderId=orderId))
+                log_2_file.info('下单成功，订单号:{}, 购买价格{}，购买数量{}，挂单类型{}.'.format(orderId, realTimePrice, qty_or_None, TrdSide.SELL))
             else:
                 lastErrMsg = data['last_err_msg'].item()
                 log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=lastErrMsg))
-                #待增加微信通知功能
-    else:
-        log_2_file.info('没有股票:{code},数量:{qty_or_None}'.format(code=code, qty_or_None=qty_or_None))
-
+        else: #若上一次订单没有结束，则继续等待
+            log_2_file.info('该股票{}最后一次订单状态仍处于挂单中，无法挂单买入，继续等待。')
 
 
 def real_time_price(quote_ctx, stock_num):
     '''
-    若持有该股票，则查询该股票实时价格，准备挂单卖出
+    若持有该股票，则查询该股票实时价格
     返回 406.0 <class 'float'>
     '''
     subscribe_obj = SubsCribe(quote_ctx, stock_num)
@@ -91,7 +119,7 @@ def real_time_price(quote_ctx, stock_num):
 
 def i_have_the_stock(log_2_file, quote_ctx, stock_num):
     '''
-    检查本账户下是否有持仓该股票
+    获取账户的持仓列表 检查是否持有该股票stock_num
     返回：(param1, param2, param3， param4) -> (str, float, float, int)
     '''
     quote_ctx.unlock_trade(PWD_UNLOCK)
@@ -101,7 +129,7 @@ def i_have_the_stock(log_2_file, quote_ctx, stock_num):
         #tmp_stock_list.append(data.iloc[i].iat[0])
         tmp_stock_list.append(data['code'].item())
     log_2_file.warn('账户下持有{n}个股票tmp_stock_list'.format(n=len(data), tmp_stock_list=str(tmp_stock_list)))
-    dst_stock_num = get_code_list(stock_num)
+    dst_stock_num = get_code_list_type(stock_num)
     log_2_file.info('目标股票是dst_stock_num'.format(dst_stock_num=dst_stock_num))
     if dst_stock_num in tmp_stock_list:
         log_2_file.info('已持有该股票dst_stock_num'.format(dst_stock_num=dst_stock_num))
@@ -111,7 +139,10 @@ def i_have_the_stock(log_2_file, quote_ctx, stock_num):
     
     #quote_ctx.close()
 
-
+def my_order_list_query():
+    '''
+    获取账户的交易订单列表
+    '''
 
 def aaaa(log_2_file, func, t, n):
     '''
