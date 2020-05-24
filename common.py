@@ -4,11 +4,11 @@ from logger import Logger
 from futu import OpenUSTradeContext, OpenHKTradeContext, OrderStatus
 
 #美/港股
-US_STOCK = {'MKT':'US', 'trd_ctx':OpenUSTradeContext(host='127.0.0.1', port=11111),'LASTTIME_BUY_PRIC':'cost_price'}
-HK_STOCK = {'MKT':'HK', 'trd_ctx':OpenHKTradeContext(host='127.0.0.1', port=11111),'LASTTIME_BUY_PRIC':'cost_price'}
+US_STOCK = {'MKT':'US', 'trd_ctx':OpenUSTradeContext(host='127.0.0.1', port=11111), 'LASTTIME_BUY_PRIC':'cost_price'}
+HK_STOCK = {'MKT':'HK', 'trd_ctx':OpenHKTradeContext(host='127.0.0.1', port=11111), 'LASTTIME_BUY_PRIC':'cost_price'}
 
 #佣金
-YJ = {
+YJ_LADDER = {
     'US': {
             '0.0100':[1, 500],
             '0.0080':[501, 1000],
@@ -53,7 +53,7 @@ def get_last_order_status(trd_ctx, code, pwd_unlock, TRD_ENV):
     start_tm = time.strftime("%Y-%m-%d 00:00:00",time.localtime())
     end_tm = time.strftime("%Y-%m-%d %X",time.localtime())
     ret, data = trd_ctx.order_list_query(code=code, trd_env=TRD_ENV, start=start_tm, end=end_tm)
-    if ret:
+    if ret == 0:
         for index, row in data.iterrows():
             if index==0:
                 return row['order_status']#, row['trd_side']
@@ -64,7 +64,8 @@ def last_order_is_over(order_status):
     #return order_status in ['NONE','UNSUBMITTED','SUBMIT_FAILED','FILLED_ALL','CANCELLED_PART','CANCELLED_ALL','FAILED','DISABLED','DELETED']
     return order_status in [OrderStatus.NONE, OrderStatus.UNSUBMITTED, OrderStatus.SUBMIT_FAILED, \
                             OrderStatus.FILLED_ALL, OrderStatus.CANCELLED_PART, OrderStatus.CANCELLED_ALL, \
-                            OrderStatus.FAILED, OrderStatus.DISABLED, OrderStatus.DELETED
+                            OrderStatus.FAILED, OrderStatus.DISABLED, OrderStatus.DELETED, \
+                            None #未查询到状态时，返回为None
                             ]
 
 def is_HK_mkt(num):
@@ -76,7 +77,7 @@ def is_HK_mkt(num):
         return False
 
 def is_US_mkt(num):
-    pattern = re.compile(r'[A-Za-z]+')   # 查找数字
+    pattern = re.compile(r'[A-Za-z.]+')   # 查找数字
     result = pattern.findall(num)
     if result:
         return len(num) == len(result[0])
@@ -105,22 +106,23 @@ def get_code_list_type(stock_code):
 
 def myYjNow(trd_ctx, pwd_unlock, stock_num, now_qty):
     cur_mkt = get_mkt(stock_num).get('MKT')
-    price_ladder = YJ.get(cur_mkt, None)
+    price_ladder = YJ_LADDER.get(cur_mkt, None)
     #month_qty = get_cur_month_deal_total(trd_ctx, pwd_unlock)
     price_ladder_price = []
     price_ladder_num = []
+    cur_ladder_num = now_qty
     res = 0.000 
     for i in sorted(price_ladder, reverse=False): 
         price_ladder_price.append(i)
         price_ladder_num.append(price_ladder[i][0])
     #print(price_ladder_price,price_ladder_num)
     if not len(price_ladder_price) == len(price_ladder_num):
-        return
+        raise Exception('阶梯价格设置对应格式错误')
     for idx in range(0, len(price_ladder_price)): 
-        if i>price_ladder_num[idx]:  
+        if cur_ladder_num > price_ladder_num[idx]:
             #print('i:',i,'price_ladder_num:',price_ladder_num[idx],'price_ladder_price:',price_ladder_price[idx],'tt:',(i-price_ladder_num[idx]+1)*price_ladder_price[idx]  )
-            res+=(i-price_ladder_num[idx]+1)*price_ladder_price[idx]  
-            i=price_ladder_num[idx]-1
+            res += (cur_ladder_num-price_ladder_num[idx]+1)* float(price_ladder_price[idx]) 
+            cur_ladder_num=price_ladder_num[idx]-1
     #print(res) 
     return res
 
