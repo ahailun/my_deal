@@ -38,7 +38,7 @@ def unlock(trd_ctx):
         return True
     return False
 
-def main(trd_ctx, meibi_zhuan, code, YJ, ZHISUNXIAN, pwd_unlock):
+def start_to_deal(trd_ctx, meibi_zhuan, code, YJ, ZHISUNXIAN, pwd_unlock):
     '''
     code:HK.00700
     YJ：单程佣金
@@ -132,7 +132,7 @@ def i_have_the_stock(quote_ctx, stock_num):
     log_2_file.info('未持有该股票dst_stock_num'.format(dst_stock_num=dst_stock_num))
     return (False, None, None, None)
 
-def wrapper(func, t, n, trd_ctx):
+def main(deal_function, t, n, trd_ctx):
     '''
     t时间间隔内的最多执行n次func函数
     '''
@@ -143,13 +143,13 @@ def wrapper(func, t, n, trd_ctx):
             cycle_period_now = time.time()
             if cycle_period_now - cycle_period_start <= int(t):
                 if cycle_period_count < int(n):
-                    func()
+                    deal_function()
                     #cycle_period_start = time.time()
                     cycle_period_count += 1
                 else:
                     log_2_file.warn('当前{}s内已执行{}次，无法交易需等待下一次交易机会。'.format(t, n))
             else:
-                func()
+                deal_function()
                 cycle_period_start = time.time()
                 cycle_period_count = 0
         except Exception as e:
