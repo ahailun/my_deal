@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
+from tkinter import *
 from futu import *
 from tkinter import messagebox as tkMessageBox
 import sys, time
@@ -8,7 +9,7 @@ from logger import Logger
 from common import is_HK_mkt, is_US_mkt, get_code_list_type, get_last_order_status, get_mkt, \
                     last_order_is_over,myYjNow
 
-log_2_file =  Logger()
+log_2_file = None
 
 #订阅数量要求，每个订阅类型占用一个额度，我名下额度默认为300
 #两次订阅/反订阅间隔60s,初始值设置为0s
@@ -38,7 +39,7 @@ def unlock(trd_ctx):
         return True
     return False
 
-def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty):
+def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, log_2_file):
     '''
     code:HK.00700
     YJ：单程佣金
@@ -49,7 +50,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty):
     Q:盈亏规则挂单后，突然股价跌破止损线的情况： plRatio > ZHISUNXIAN
     '''
     YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty)
-    (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(trd_ctx, code)
+    (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(trd_ctx, code, log_2_file)
     last_order_status, last_order_side = get_last_order_status(trd_ctx, code, PWD_UNLOCK, TRD_ENV)
     if iHave:
         log_2_file.info('已持有股票:{code},数量:{qty_or_None},在我的订单列表中该股票{code}最后一次订单状态是{last_order_status}'.format(
@@ -130,7 +131,7 @@ def real_time_price(quote_ctx, stock_num):
     return 1.0000
 
 
-def i_have_the_stock(quote_ctx, stock_num):
+def i_have_the_stock(quote_ctx, stock_num, log_2_file):
     '''
     获取账户的持仓列表 检查是否持有该股票stock_num
     返回：(param1, param2, param3， param4) -> (str, float, float, int)
@@ -149,30 +150,33 @@ def i_have_the_stock(quote_ctx, stock_num):
     log_2_file.info('未持有该股票:{dst_stock_num}'.format(dst_stock_num=dst_stock_num))
     return (False, None, None, None)
 
-def main(deal_function, t, n, trd_ctx):
+def main_deal(deal_function, t, n, trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file):
     '''
     t时间间隔内的最多执行n次func函数
     '''
     global cycle_period_start
     global cycle_period_count
     while True:
-        try:
-            cycle_period_now = time.time()
-            if cycle_period_now - cycle_period_start <= int(t):
-                if cycle_period_count < int(n):
-                    deal_function()
-                    #cycle_period_start = time.time()
-                    cycle_period_count += 1
-                else:
-                    log_2_file.warn('当前{}s内已执行{}次，无法交易需等待下一次交易机会。'.format(t, n))
+        cycle_period_now = time.time()
+        if cycle_period_now - cycle_period_start <= int(t):
+            if cycle_period_count < int(n):
+                #deal_function()
+                deal_function(trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file)
+                #cycle_period_start = time.time()
+                cycle_period_count += 1
             else:
-                deal_function()
-                cycle_period_start = time.time()
-                cycle_period_count = 0
-        except Exception as e:
-            log_2_file.info('程序遇到异常:{}, 退出主程序'.format(str(e)))
-            trd_ctx.close()
-            sys.exit(1)
+                log_2_file.warn('当前{}s内已执行{}次，无法交易需等待下一次交易机会。'.format(t, n))
+                time.sleep(1)
+        else:
+            #deal_function()
+            deal_function(trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file)
+            cycle_period_start = time.time()
+            cycle_period_count = 0
+
+
+def test():
+    time.sleep(1)
+    log_2_file.info('in test func....')
 
 class SubsCribe(object):
     def __init__(self, quote_ctx, stock_code, writer_handler=log_2_file):
@@ -232,21 +236,82 @@ class SubsCribe(object):
                 return ret, err_message
     
 
-if __name__ == "__main__":
-    import sys
-    gpdm = 'AAPL'
-    gmsl = '100'
-    mbz = '1'
-    zsx = 8
+def deal(gpdm, gmsl, mbz, zsx, log_2_file):
     mktInfo = get_mkt(gpdm)
     trd_ctx = mktInfo.get('trd_ctx')(host='127.0.0.1', port=11111)
     quote_ctx = mktInfo.get('quote_ctx')(host='127.0.0.1', port=11111)
     code_str = gpdm
     unlock(trd_ctx)
     try:
-        start_to_deal(trd_ctx,quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
+        #start_to_deal(trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
+        main_deal(start_to_deal, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl), log_2_file)
+        #main(test, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
     except Exception as e:
-        print('mainError:%s'% str(e))
+        log_2_file.info('程序遇到异常:{}, 退出主程序'.format(str(e)))
+        sys.exit(1)
     finally:
         trd_ctx.close()
         quote_ctx.close()
+
+def deal_thread():
+    # #gpdm, gmsl, mbz, zsx
+    print(gpdm_entry.get(), gmsl_entry.get(), mbz_entry3.get(),zsx_entry.get(), log_2_file)
+    th=threading.Thread(target=deal, args=(gpdm_entry.get(), int(gmsl_entry.get()), int(mbz_entry3.get()),int(zsx_entry.get()), log_2_file))        
+    th.setDaemon(True)    
+    th.start()    
+    
+
+def stopThread():
+    pass
+
+if __name__ == "__main__":
+    # import sys
+    # gpdm = 'AAPL' #股票代码
+    # gmsl = '100'  #股票数量
+    # mbz = '1'     #每笔赚
+    # zsx = 8       #止损线
+    
+    root = Tk()
+    root.title('自动化交易助手V2.0')
+    root.geometry("1200x500+200+100")
+    root.iconbitmap(r'.\assassin.ico')
+    root.rowconfigure(1, weight=2)
+    root.columnconfigure(9, weight=2)
+
+    
+
+    gpdm = Label(root, text=' 股票代码:',font=("黑体", 12, "bold"))
+    gpdm.grid(row=0, column=0, sticky=E+N+S+W)  
+    gpdm_entry = Entry(root)
+    gpdm_entry.grid(row=0, column=1, sticky=E+N+S+W)
+    gpdm_entry.focus_set()
+    gmsl = Label(root, text='  购买数量(手):',font=("黑体", 12, "bold"))
+    gmsl.grid(row=0, column=2, sticky=E+N+S+W)
+    gmsl_entry = Entry(root)
+    gmsl_entry.grid(row=0, column=3)
+    mbz = Label(root, text='  每笔赚:',font=("黑体", 12, "bold"))
+    mbz.grid(row =0, column=4, sticky=E+N+S+W)
+    mbz_entry3= Entry(root)
+    mbz_entry3.grid(row=0, column=5, sticky=E+N+S+W)
+    zsx = Label(root, text='  止损线：',font=("黑体", 12, "bold"))
+    zsx.grid(row =0, column=6, sticky=E+N+S+W)
+    defalut_zsx = StringVar()
+    zsx_entry = Entry(root, textvariable=defalut_zsx, width=5)
+    zsx_entry.grid(row=0, column=7, sticky=E+N+S+W)
+    defalut_zsx.set("2")
+    zsx_bfh = Label(root, text='%')
+    zsx_bfh.grid(row=0, column=8, sticky=E+N+S+W)
+    ksjy_btn = Button(root, text="开始交易", font=("黑体", 12, "bold"), command=deal_thread)
+    ksjy_btn.grid(row=0, column=9, sticky=E+N+S+W, ipadx=30)
+    tzjy_btn = Button(root, text="停止交易", font=("黑体", 12, "bold"), command=stopThread)
+    tzjy_btn.grid(row=0, column=10,sticky=E+N+S+W, ipadx=30)
+    scrollbar = Scrollbar(root, orient=VERTICAL)
+    listbox = Listbox(root, width=100, height=23, yscrollcommand = scrollbar.set)
+    listbox.grid(row=1, column=0, columnspan=11, rowspan=15, sticky=E+N+S+W, padx=10, pady=5)
+    listbox.insert(END, '')
+    scrollbar.grid(row=1, column=11,  rowspan=15, sticky=E+N+S+W, pady=5)
+    scrollbar.config(command=listbox.yview)
+
+    log_2_file = Logger(listbox=listbox)
+
+    root.mainloop()
