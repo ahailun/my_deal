@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
-from tkinter import * 
 from futu import *
 from tkinter import messagebox as tkMessageBox
 import sys, time
@@ -11,7 +10,7 @@ from common import is_HK_mkt, is_US_mkt, get_code_list_type, get_last_order_stat
 
 log_2_file =  Logger()
 
-#订阅数量要求，每个订阅类型占用一个额度，我名下额度默认为500
+#订阅数量要求，每个订阅类型占用一个额度，我名下额度默认为300
 #两次订阅/反订阅间隔60s,初始值设置为0s
 stard_subscrip_num_level = '500'
 time_between_two_subscribe = 60
@@ -39,7 +38,7 @@ def unlock(trd_ctx):
         return True
     return False
 
-def start_to_deal(trd_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty):
+def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty):
     '''
     code:HK.00700
     YJ：单程佣金
@@ -51,7 +50,7 @@ def start_to_deal(trd_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty):
     '''
     YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty)
     (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(trd_ctx, code)
-    last_order_status = get_last_order_status(trd_ctx, code, PWD_UNLOCK, TRD_ENV)
+    last_order_status, last_order_side = get_last_order_status(trd_ctx, code, PWD_UNLOCK, TRD_ENV)
     if iHave:
         log_2_file.info('已持有股票:{code},数量:{qty_or_None},在我的订单列表中该股票{code}最后一次订单状态是{last_order_status}'.format(
                             code=code, 
@@ -63,7 +62,7 @@ def start_to_deal(trd_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty):
                 #达到目标利润则以当前价格卖掉
                 #超过止损线则以当前价格卖掉
                 log_2_file.info('该单已盈利{},准备挂单卖出。'.format(plVal_or_None))
-                realTimePrice = real_time_price(trd_ctx, code)
+                realTimePrice = real_time_price(quote_ctx, code)
                 log_2_file.info('准备卖出：股票:{code},当前价格:{realTimePrice},交易数量:{qty_or_None},盈亏金额:{plVal_or_None},盈亏比例:{plRatio}'.format(\
                                 code=code, realTimePrice=realTimePrice, qty_or_None=qty_or_None, plVal_or_None=plVal_or_None, plRatio=plRatio
                                 ))
@@ -77,7 +76,7 @@ def start_to_deal(trd_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty):
                     #待增加微信通知功能
             if  plRatio > ZHISUNXIAN:
                 log_2_file.warn('当前交易单的盈亏比例为：{}，超过止损线：{}，以止损价挂单。'.format(plRatio, ZHISUNXIAN))
-                ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, code, TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
+                ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret:
                     orderId = data['order_id'].item()
                     log_2_file.info('挂单成功，订单号:{}, 卖价{}，数量{}，挂单类型{}'.format(orderId, realTimePrice, qty_or_None, TrdSide.SELL))
@@ -88,16 +87,17 @@ def start_to_deal(trd_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty):
             log_2_file.info('该股票{}最后一次订单状态仍处于挂单中，无法挂单卖出，继续等待。')
 
     else:
-        log_2_file.info('没有持仓该股票:{code}'.format(code=code))
-        log_2_file.info('今天该股票{}最后一次订单状态是{}'.format(code, last_order_status))
+        qty_or_None = now_qty #手工输入的数量
+        log_2_file.info('当前没有持仓该股票:{code}'.format(code=code))
+        log_2_file.info('该股票{}今天最后的订单状态是{}，方向是{}。'.format(code, last_order_status,last_order_side))
         if last_order_is_over(last_order_status) : #若上一次订单已经结束，则执行买入操作
             log_2_file.info('可以下单购买股票:{code}'.format(code=code))
-            realTimePrice = real_time_price(trd_ctx, code)
+            realTimePrice = real_time_price(quote_ctx, code)
             log_2_file.info('准备买入股票:{},当前价格:{},交易数量:{}'.format(code, realTimePrice, qty_or_None))
-            ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, code, TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
-            if ret:
+            ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
+            if ret == RET_OK:
                 orderId = data['order_id'].item()
-                log_2_file.info('下单成功，订单号:{}, 购买价格{}，购买数量{}，挂单类型{}.'.format(orderId, realTimePrice, qty_or_None, TrdSide.SELL))
+                log_2_file.info('下单成功，订单号:{}, 购买价格{}，购买数量{}，挂单类型{}。'.format(orderId, realTimePrice, qty_or_None, TrdSide.SELL))
             else:
                 lastErrMsg = data['last_err_msg'].item()
                 log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=lastErrMsg))
@@ -117,9 +117,18 @@ def real_time_price(quote_ctx, stock_num):
     if subscribe_obj.sub_status == CAN_NOT_SUBSCRIBE:
         subscribe_obj.unsubscribe_mystock_all()
         subscribe_obj.subscribe_mystock()
-    cur_price_df = quote_ctx.get_stock_quote(stock_num)[1]
-    return cur_price_df.iloc[0].iat[3].item()
-    #return cur_price_df['pl_val'].item()
+    cur_price_df = subscribe_obj.quote_ctx.get_stock_quote(get_code_list_type(stock_num))[1]
+
+    '''
+    --------------为调试而注释----------------
+    # if len(cur_price_df) == 0:
+    #     log_2_file.error('无法查询到股票{}的实时价格。'.format(stock_num))
+    #     raise Exception('无法查询到股票%s的实时价格。')
+    # return cur_price_df.iloc[0].iat[3].item()
+    # #return cur_price_df['pl_val'].item()
+    '''
+    return 1.0000
+
 
 def i_have_the_stock(quote_ctx, stock_num):
     '''
@@ -131,7 +140,7 @@ def i_have_the_stock(quote_ctx, stock_num):
     for i in range(0, len(data)):
         #tmp_stock_list.append(data.iloc[i].iat[0])
         tmp_stock_list.append(data['code'].item())
-    log_2_file.warn('账户下持有{n}个股票{tmp_stock_list}'.format(n=len(data), tmp_stock_list=str(tmp_stock_list)))
+    log_2_file.warn('本账户已持有{n}个股票{tmp_stock_list}'.format(n=len(data), tmp_stock_list=str(tmp_stock_list)))
     dst_stock_num = get_code_list_type(stock_num)
     log_2_file.info('目标股票是{dst_stock_num}'.format(dst_stock_num=dst_stock_num))
     if dst_stock_num in tmp_stock_list:
@@ -167,7 +176,7 @@ def main(deal_function, t, n, trd_ctx):
 
 class SubsCribe(object):
     def __init__(self, quote_ctx, stock_code, writer_handler=log_2_file):
-        self.quote_ctx = quote_ctx
+        self.quote_ctx = OpenQuoteContext(host='127.0.0.1', port=11111)
         self.stock_code = stock_code.strip()
         self.writer_handler = writer_handler
         self.sub_status = None
@@ -179,11 +188,12 @@ class SubsCribe(object):
             remain_subcrip_count  = data.get('remain', stard_subscrip_num_level)
             if int(remain_subcrip_count) > 0:
                 self.writer_handler.info('当前已使用了{used}次订阅额度，剩余{left}次。'\
-                    .format(used=str(int(used_subcrip_count) + int(remain_subcrip_count)), left=str(remain_subcrip_count))
+                    .format(used=str(int(used_subcrip_count)), left=str(remain_subcrip_count))
                     )
                 my_subscribe_list = data.get('sub_list').get('QUOTE')
-                self.writer_handler.info('已订阅列表为sub_list_QUOTE'.format(sub_list_QUOTE=my_subscribe_list))
-                if self.stock_code in my_subscribe_list:
+                self.writer_handler.info('已订阅列表为{}'.format(my_subscribe_list))
+                if my_subscribe_list and self.stock_code in my_subscribe_list:
+                    self.writer_handler.info('已订阅该股票{}'.format(self.stock_code))
                     self.sub_status = NEED_NOT_SUBSCRIBE
                 else:
                     self.sub_status = NEED_SUBSCRIBE
@@ -192,6 +202,8 @@ class SubsCribe(object):
                     .format(used=str(int(used_subcrip_count) + int(remain_subcrip_count)), code=self.stock_code)
                     )
                 self.sub_status = CAN_NOT_SUBSCRIBE
+        else:
+             self.writer_handler.info('查询订阅失败，{}'.format(data))
 
     def unsubscribe_mystock_all(self):
         global subscriptime
@@ -206,8 +218,7 @@ class SubsCribe(object):
         try_sub_count = 0
         self.writer_handler.info('开始订阅{code}。'.format(code=self.stock_code))
         while True:
-            (ret, err_message) = self.quote_ctx.subscribe(['{US_HK_NAME}'.format(US_HK_NAME=get_code_list_type(self.stock_code))],\
-                                     [SubType.QUOTE])
+            (ret, err_message) = self.quote_ctx.subscribe(get_code_list_type(self.stock_code), [SubType.QUOTE])
             subscriptime = time.time()
             if ret == RET_OK:
                 self.writer_handler.info('订阅{code}成功。'.format(code=self.stock_code))
@@ -221,22 +232,21 @@ class SubsCribe(object):
                 return ret, err_message
     
 
-
-
 if __name__ == "__main__":
     import sys
-    gpdm = 'BRK.A'
+    gpdm = 'AAPL'
     gmsl = '100'
     mbz = '1'
     zsx = 8
     mktInfo = get_mkt(gpdm)
-    trd_ctx = mktInfo.get('trd_ctx')
+    trd_ctx = mktInfo.get('trd_ctx')(host='127.0.0.1', port=11111)
+    quote_ctx = mktInfo.get('quote_ctx')(host='127.0.0.1', port=11111)
     code_str = gpdm
     unlock(trd_ctx)
-    # try:
-    #     start_to_deal(trd_ctx, int(mbz), code_str, int(zsx), int(gmsl))
-    # except Exception as e:
-    #     print('mainError:%s'% str(e))
-    #     trd_ctx.close()
-    ss=real_time_price(trd_ctx, 'BRK.A')
-    print('asdfasdfadf:%s'%ss)
+    try:
+        start_to_deal(trd_ctx,quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
+    except Exception as e:
+        print('mainError:%s'% str(e))
+    finally:
+        trd_ctx.close()
+        quote_ctx.close()

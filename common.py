@@ -1,11 +1,13 @@
 import re
 import time
 from logger import Logger
-from futu import OpenUSTradeContext, OpenHKTradeContext, OrderStatus
+from futu import OpenUSTradeContext, OpenHKTradeContext, OpenQuoteContext, OrderStatus
 
 #美/港股
-US_STOCK = {'MKT':'US', 'trd_ctx':OpenUSTradeContext(host='127.0.0.1', port=11111), 'LASTTIME_BUY_PRIC':'cost_price'}
-HK_STOCK = {'MKT':'HK', 'trd_ctx':OpenHKTradeContext(host='127.0.0.1', port=11111), 'LASTTIME_BUY_PRIC':'cost_price'}
+# US_STOCK = {'MKT':'US', 'trd_ctx':OpenUSTradeContext(host='127.0.0.1', port=11111),'quote_ctx':OpenQuoteContext(host='127.0.0.1', port=11111), 'LASTTIME_BUY_PRIC':'cost_price'}
+# HK_STOCK = {'MKT':'HK', 'trd_ctx':OpenHKTradeContext(host='127.0.0.1', port=11111), 'quote_ctx':OpenQuoteContext(host='127.0.0.1', port=11111), 'LASTTIME_BUY_PRIC':'cost_price'}
+US_STOCK = {'MKT':'US', 'trd_ctx':OpenUSTradeContext, 'quote_ctx':OpenQuoteContext, 'LASTTIME_BUY_PRIC':'cost_price'}
+HK_STOCK = {'MKT':'HK', 'trd_ctx':OpenHKTradeContext, 'quote_ctx':OpenQuoteContext, 'LASTTIME_BUY_PRIC':'cost_price'}
 
 #佣金
 YJ_LADDER = {
@@ -56,7 +58,7 @@ def get_last_order_status(trd_ctx, code, pwd_unlock, TRD_ENV):
     if ret == 0:
         for index, row in data.iterrows():
             if index==0:
-                return row['order_status']#, row['trd_side']
+                return row['order_status'], row['trd_side']
     else:
         raise Exception(data)
 
