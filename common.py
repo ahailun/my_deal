@@ -52,13 +52,16 @@ def get_last_order_status(trd_ctx, code, pwd_unlock, TRD_ENV):
     # if orderid: #下单后等待1s再查询订单状态
     #     ret, data = trd_ctx.order_list_query(order_id=orderid,  trd_env=TRD_ENV)
     # else:
-    start_tm = time.strftime("%Y-%m-%d 00:00:00",time.localtime())
+    start_tm = time.strftime("2020-03-01 00:00:00",time.localtime()) #目的是尽量包含所有该支股票的信息
     end_tm = time.strftime("%Y-%m-%d %X",time.localtime())
     ret, data = trd_ctx.order_list_query(code=code, trd_env=TRD_ENV, start=start_tm, end=end_tm)
     if ret == 0:
-        for index, row in data.iterrows():
-            if index==0:
-                return row['order_status'], row['trd_side']
+        if len(data) != 0:
+            for index, row in data.iterrows():
+                if index==0:
+                    return row['order_status'], row['trd_side']
+        else:
+            return None, None
     else:
         raise Exception(data)
 
