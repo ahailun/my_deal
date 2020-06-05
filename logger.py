@@ -4,12 +4,13 @@
 import time, logging
 from tkinter import END
 
+#TODO 按照日志文件大小分割https://www.jianshu.com/p/c373cd6c628f
 class Logger:
     def __init__(self, listbox=None, logfile=time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime(time.time()))+'.log', clevel = logging.DEBUG, Flevel = logging.DEBUG):
         self.logger = logging.getLogger(logfile)
         self.logger.setLevel(logging.DEBUG)
         self.listbox = listbox
-        fmt = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s', '%Y-%m-%d %H:%M:%S')
+        fmt = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s')
         #设置CMD日志
         # sh = logging.StreamHandler()
         # sh.setFormatter(fmt)
