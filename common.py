@@ -47,14 +47,14 @@ def get_cur_month_deal_total(trd_ctx, pwd_unlock,start_tm=None, end_tm=None):
     else:
         print('请求历史成交数据错误')
 
-def get_last_order_status(trd_ctx, code, pwd_unlock, TRD_ENV):
-    time.sleep(1)
-    # if orderid: #下单后等待1s再查询订单状态
-    #     ret, data = trd_ctx.order_list_query(order_id=orderid,  trd_env=TRD_ENV)
-    # else:
-    start_tm = time.strftime("2020-03-01 00:00:00",time.localtime()) #目的是尽量包含所有该支股票的信息
-    end_tm = time.strftime("%Y-%m-%d %X",time.localtime())
-    ret, data = trd_ctx.order_list_query(code=code, trd_env=TRD_ENV, start=start_tm, end=end_tm)
+def get_last_order_status(trd_ctx, code, orderid, pwd_unlock, TRD_ENV):
+    # time.sleep(1)
+    if orderid: #下单后等待1s再查询订单状态
+        ret, data = trd_ctx.order_list_query(order_id=orderid, trd_env=TRD_ENV)
+    else:
+        start_tm = time.strftime("2020-03-01 00:00:00",time.localtime()) #目的是尽量包含所有该支股票的信息
+        end_tm = time.strftime("%Y-%m-%d %X",time.localtime())
+        ret, data = trd_ctx.order_list_query(code=code, trd_env=TRD_ENV, start=start_tm, end=end_tm)
     if ret == 0:
         if len(data) != 0:
             for index, row in data.iterrows():
