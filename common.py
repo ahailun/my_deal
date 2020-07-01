@@ -129,7 +129,7 @@ def myYjNow(trd_ctx, pwd_unlock, stock_num, now_qty):
     for idx in range(0, len(price_ladder_price)): 
         if now_qty+month_qty>price_ladder_num[idx]:  
             if price_ladder_num[idx]==1:
-                platcost+=now_qty*price_ladder_price[idx]
+                platcost+=now_qty*float(price_ladder_price[idx])
             else:
                 platcost+=(now_qty+month_qty-price_ladder_num[idx]+1)*float(price_ladder_price[idx])
                 if price_ladder_num[idx]-1-month_qty > 0:

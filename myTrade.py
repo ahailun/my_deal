@@ -66,7 +66,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
                 #超过止损线则以当前价格卖掉
                 log_2_file.info('该单已盈利{},准备挂单卖出。'.format(plVal_or_None))
                 #realTimePrice = real_time_price(quote_ctx, code)
-                realTimePrice = float( "%.2f" % random.uniform(3.885, 3.9))
+                realTimePrice = float( "%.2f" % random.uniform(7.79, 7.81))
                 log_2_file.info('准备卖出：股票:{code},当前价格:{realTimePrice},交易数量:{qty_or_None},盈亏金额:{plVal_or_None},盈亏比例:{plRatio}'.format(\
                                 code=code, realTimePrice=realTimePrice, qty_or_None=qty_or_None, plVal_or_None=plVal_or_None, plRatio=plRatio
                                 ))
@@ -79,10 +79,10 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
                     lastErrMsg = data['last_err_msg'].item()
                     log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=lastErrMsg))
                     #待增加微信通知功能
-            elif  0 >  0- ZHISUNXIAN and 0 - ZHISUNXIAN >= plRatio: #两个参数为负数
+            elif  0 >  0-ZHISUNXIAN and 0-ZHISUNXIAN >= plRatio: #两个参数为负数
                 log_2_file.warn('当前交易单的亏损比例为：{:.1f}%，超过止损线：{}，以当前价格挂单。'.format(plRatio, ZHISUNXIAN))
                 #realTimePrice = real_time_price(quote_ctx, code)
-                realTimePrice = float( "%.2f" % random.uniform(3.885, 3.9))
+                realTimePrice = float( "%.2f" % random.uniform(7.79, 7.81))
                 ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret==RET_OK:
                     last_order_id = data['order_id'][0]
@@ -103,7 +103,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
             log_2_file.info('当前没有持仓该股票:{code}'.format(code=code))
             log_2_file.info('该股票{}今天最后的订单状态是{}，方向是{},可以下单购买。'.format(code, last_order_status,last_order_side))
             #realTimePrice = real_time_price(quote_ctx, code)
-            realTimePrice = float( "%.2f" % random.uniform(3.885, 3.9))
+            realTimePrice = float( "%.2f" % random.uniform(7.79, 7.81))
             log_2_file.info('准备买入股票:{},当前价格:{},交易数量:{}'.format(code, realTimePrice, qty_or_None))
             ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
             if ret == RET_OK:
@@ -145,28 +145,29 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
     返回：(param1, param2, param3， param4) -> (str, float, float, int)
     '''
     ret, data = quote_ctx.position_list_query(trd_env=TRD_ENV, refresh_cache=True)
-    tmp_stock_list = []
+    tmp_stock_dict = {}
     try:
-        for i in range(0, len(data)):
-            #tmp_stock_list.append(data.iloc[i].iat[0])
-            tmp_stock_list.append(data['code'].item())
+        for index, row in data.iterrows():
+            tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio']]})
     except TypeError as e:
-        if '频率限制' in data: #此协议请求太频繁，触发了频率限制，请稍后再试
+        if '频率限制' in str(e): #此协议请求太频繁，触发了频率限制，请稍后再试
             time.sleep(1)
+            tmp_stock_dict = {}
             ret, data = quote_ctx.position_list_query(trd_env=TRD_ENV, refresh_cache=True)
-            tmp_stock_list = [] 
-            for i in range(0, len(data)):
-                tmp_stock_list.append(data['code'].item())
+            for index, row in data.iterrows():
+                tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio']]})
     print('*'*50)
-    print(time.strftime('%H:%M:%S',time.localtime(time.time()))+' 本账户已持有{n}个股票{tmp_stock_list}'.format(n=len(data), tmp_stock_list=str(tmp_stock_list)))
+    print(time.strftime('%H:%M:%S',time.localtime(time.time()))+' 本账户已持有{n}个股票{tmp_stock_dict}'.format(n=len(data), tmp_stock_dict=str(tmp_stock_dict.keys())))
     print('*'*50)
-    log_2_file.warn('本账户已持有{n}个股票{tmp_stock_list}'.format(n=len(data), tmp_stock_list=str(tmp_stock_list)))
+    log_2_file.warn('本账户已持有{n}个股票{tmp_stock_dict}'.format(n=len(tmp_stock_dict), tmp_stock_dict=str(tmp_stock_dict.keys())))
     
     dst_stock_num = get_code_list_type(stock_num)[0]
     log_2_file.info('目标股票是{dst_stock_num}'.format(dst_stock_num=dst_stock_num))
-    if dst_stock_num in tmp_stock_list:
+    if dst_stock_num in tmp_stock_dict:
+        tempinfo = tmp_stock_dict[dst_stock_num]
         log_2_file.info('已持有该股票{dst_stock_num}'.format(dst_stock_num=dst_stock_num))
-        return (True, data['pl_val'].item(),  data['qty'].item(), data['pl_ratio'].item())
+        #return (True, data['pl_val'].item(),  data['qty'].item(), data['pl_ratio'].item())
+        return (True, tempinfo[0],tempinfo[1],tempinfo[2])
     log_2_file.info('未持有该股票:{dst_stock_num}'.format(dst_stock_num=dst_stock_num))
     return (False, None, None, None)
 
@@ -281,13 +282,13 @@ def stopThread():
 
 if __name__ == "__main__":
     # import sys
-    gpdm = 'LK'   #股票代码
+    gpdm = 'NIO'   #股票代码
     gmsl = '100'  #股票数量
     mbz = '1'     #每笔赚
-    zsx = 8       #止损线
+    zsx = 0.5       #止损线
     mktInfo = get_mkt('gpdm')
     trd_ctx = mktInfo.get('trd_ctx')(host='127.0.0.1', port=11111)
     quote_ctx = mktInfo.get('quote_ctx')(host='127.0.0.1', port=11111)
     code_str = gpdm
     unlock(trd_ctx)
-    main_deal(start_to_deal, 30, 9, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl), log_2_file)
+    main_deal(start_to_deal, 30, 9, trd_ctx, quote_ctx, int(mbz), code_str, float(zsx), int(gmsl), log_2_file)
