@@ -112,10 +112,10 @@ def get_code_list_type(stock_code):
 def myYjNow(trd_ctx, pwd_unlock, stock_num, now_qty):
     cur_mkt = get_mkt(stock_num).get('MKT')
     price_ladder = YJ_LADDER.get(cur_mkt, None)
-    #month_qty = get_cur_month_deal_total(trd_ctx, pwd_unlock)
+    month_qty = get_cur_month_deal_total(trd_ctx, pwd_unlock)
     price_ladder_price = []
     price_ladder_num = []
-    cur_ladder_num = now_qty
+    
     res = 0.000 
     for i in sorted(price_ladder, reverse=False): 
         price_ladder_price.append(i)
@@ -123,12 +123,20 @@ def myYjNow(trd_ctx, pwd_unlock, stock_num, now_qty):
     #print(price_ladder_price,price_ladder_num)
     if not len(price_ladder_price) == len(price_ladder_num):
         raise Exception('阶梯价格设置对应格式错误')
+    # for idx in range(0, len(price_ladder_price)): 
+    #     if cur_ladder_num > price_ladder_num[idx]:
+    #         res += (cur_ladder_num-price_ladder_num[idx]+1)* float(price_ladder_price[idx]) 
+    #         cur_ladder_num=price_ladder_num[idx]-1
+    # #print(res) 
     for idx in range(0, len(price_ladder_price)): 
-        if cur_ladder_num > price_ladder_num[idx]:
-            #print('i:',i,'price_ladder_num:',price_ladder_num[idx],'price_ladder_price:',price_ladder_price[idx],'tt:',(i-price_ladder_num[idx]+1)*price_ladder_price[idx]  )
-            res += (cur_ladder_num-price_ladder_num[idx]+1)* float(price_ladder_price[idx]) 
-            cur_ladder_num=price_ladder_num[idx]-1
-    #print(res) 
+        if now_qty+month_qty>price_ladder_num[idx]:  
+            if price_ladder_num[idx]==1:
+                res+=now_qty*price_ladder_price[idx]
+            else:
+                res+=(now_qty+month_qty-price_ladder_num[idx]+1)*float(price_ladder_price[idx])
+                if price_ladder_num[idx]-1-month_qty > 0:
+                    res+=(price_ladder_num[idx]-1-month_qty)*float(price_ladder_price[idx+1])
+            break
     return res
 
 if __name__ == "__main__":
