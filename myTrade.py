@@ -186,8 +186,8 @@ def main_deal(deal_function, t, n, trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl,
                 #cycle_period_start = time.time()
                 cycle_period_count += 1
             else:
+                time.sleep(2)
                 log_2_file.warn('当前{}s内已执行{}次，无法交易需等待下一次交易机会。'.format(t, n))
-                time.sleep(1)
         else:
             #deal_function()
             deal_function(trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file)
