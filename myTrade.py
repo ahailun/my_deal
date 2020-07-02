@@ -160,7 +160,7 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
     # print('*'*50)
     # print(time.strftime('%H:%M:%S',time.localtime(time.time()))+' 本账户已持有{n}个股票{tmp_stock_dict}'.format(n=len(data), tmp_stock_dict=str(tmp_stock_dict.keys())))
     # print('*'*50)
-    log_2_file.warn('本账户已持有{n}个股票{tmp_stock_dict}'.format(n=len(tmp_stock_dict), tmp_stock_dict=str(tmp_stock_dict.keys())))
+    log_2_file.warn('本账户已持有{n}个股票{tmp_stock_dict}'.format(n=len(tmp_stock_dict), tmp_stock_dict=str(list(tmp_stock_dict.keys()))))
     
     dst_stock_num = get_code_list_type(stock_num)[0]
     log_2_file.info('目标股票是{dst_stock_num}'.format(dst_stock_num=dst_stock_num))
