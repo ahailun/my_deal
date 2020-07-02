@@ -273,7 +273,7 @@ def deal(gpdm, gmsl, mbz, zsx, log_2_file):
 def deal_thread():
     # #gpdm, gmsl, mbz, zsx
     print(gpdm_entry.get(), gmsl_entry.get(), mbz_entry3.get(),zsx_entry.get(), log_2_file)
-    th=threading.Thread(target=deal, args=(gpdm_entry.get(), int(gmsl_entry.get()), int(mbz_entry3.get()),int(zsx_entry.get()), log_2_file))        
+    th=threading.Thread(target=deal, args=(gpdm_entry.get(), int(gmsl_entry.get()), float(mbz_entry3.get()),float(zsx_entry.get()), log_2_file))        
     th.setDaemon(True)    
     th.start()    
     
