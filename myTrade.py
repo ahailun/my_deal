@@ -168,7 +168,7 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
         tempinfo = tmp_stock_dict[dst_stock_num]
         log_2_file.info('已持有该股票{dst_stock_num}'.format(dst_stock_num=dst_stock_num))
         #return (True, data['pl_val'].item(),  data['qty'].item(), data['pl_ratio'].item())
-        return (True, tempinfo[0],tempinfo[1],tempinfo[2])
+        return (True, float(tempinfo[0]),int(tempinfo[1]),float(tempinfo[2]))
     log_2_file.info('未持有该股票:{dst_stock_num}'.format(dst_stock_num=dst_stock_num))
     return (False, None, None, None)
 
