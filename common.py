@@ -27,7 +27,7 @@ YJ_LADDER = {
 }
 
 
-def get_cur_month_deal_total(trd_ctx, pwd_unlock,start_tm=None, end_tm=None):
+def get_cur_month_deal_total(trd_ctx, pwd_unlock, log_2_file, start_tm=None, end_tm=None):
     '''
     功能：获取本月成交数量
     限制：请求协议ID:2222, 30秒内请求最多10次，若只在卖出时调用可不考虑限制条件
@@ -45,7 +45,7 @@ def get_cur_month_deal_total(trd_ctx, pwd_unlock,start_tm=None, end_tm=None):
             tmp_month_qty.append(row['qty'])
         return sum(tmp_month_qty)
     else:
-        print('请求历史成交数据错误')
+        log_2_file.error('请求历史成交数据错误:'+data)
 
 def get_last_order_status(trd_ctx, code, orderid, pwd_unlock, TRD_ENV):
     # time.sleep(1)
@@ -109,13 +109,13 @@ def get_code_list_type(stock_code):
         raise Exception('找不到该股票的市场列表!')
     return code_list
 
-def myYjNow(trd_ctx, pwd_unlock, stock_num, now_qty):
+def myYjNow(trd_ctx, pwd_unlock, stock_num, now_qty, log_2_file):
     '''
     计算佣金yj和平台使用费platcost
     '''
     cur_mkt = get_mkt(stock_num).get('MKT')
     price_ladder = YJ_LADDER.get(cur_mkt, None)
-    month_qty = get_cur_month_deal_total(trd_ctx, pwd_unlock)
+    month_qty = get_cur_month_deal_total(trd_ctx, pwd_unlock, log_2_file)
     price_ladder_price = []
     price_ladder_num = []
     

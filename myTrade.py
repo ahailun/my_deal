@@ -53,9 +53,9 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
     plRatio：盈亏比例
     Q:盈亏规则挂单后，突然股价跌破止损线的情况： plRatio > ZHISUNXIAN
     '''
-    log_2_file.info('*'*54+' start...')
+    # log_2_file.info('*'*54+' start...')
     global last_order_id
-    YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty)
+    YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty, log_2_file)
     last_order_status, last_order_side = get_last_order_status(trd_ctx, code, last_order_id, PWD_UNLOCK, TRD_ENV)
     if last_order_is_over(last_order_status) : #若上一次订单已经结束，则执行卖出操作
         (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(trd_ctx, code, log_2_file)
@@ -110,11 +110,12 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
                 last_order_id = data['order_id'][0]
                 log_2_file.info('下单成功，订单号:{}, 购买价格{}，购买数量{}，挂单类型{}。'.format(last_order_id, realTimePrice, qty_or_None, TrdSide.BUY))
             else:
+                print(data,get_code_list_type(code)[0])
                 lastErrMsg = data['last_err_msg'].item()
                 log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=lastErrMsg))
     else: #若上一次订单没有结束，则继续等待
             log_2_file.info('该股票{}仍处于挂单中需继续等待，挂单状态{}。'.format(code, last_order_status))
-    log_2_file.info('*'*56+' end...')
+    # log_2_file.info('*'*56+' end...')
 
 def real_time_price(quote_ctx, stock_num):
     '''
@@ -186,8 +187,8 @@ def main_deal(deal_function, t, n, trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl,
                 #cycle_period_start = time.time()
                 cycle_period_count += 1
             else:
-                time.sleep(2)
-                log_2_file.warn('当前{}s内已执行{}次，无法交易需等待下一次交易机会。'.format(t, n))
+                log_2_file.warn('当前{}s内已执行{}次，无法交易需等待下一次交易机会。'.format(t, int(n)+1))
+                time.sleep(30)
         else:
             #deal_function()
             deal_function(trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file)
@@ -265,7 +266,7 @@ def deal(gpdm, gmsl, mbz, zsx, log_2_file):
     unlock(trd_ctx)
 
     #start_to_deal(trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
-    main_deal(start_to_deal, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl), log_2_file)
+    main_deal(start_to_deal, 30, 9, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl), log_2_file)
     #main(test, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
 
 
@@ -282,13 +283,47 @@ def stopThread():
 
 if __name__ == "__main__":
     # import sys
-    gpdm = 'NIO'   #股票代码
-    gmsl = '100'  #股票数量
-    mbz = '1'     #每笔赚
-    zsx = 0.5       #止损线
-    mktInfo = get_mkt('gpdm')
-    trd_ctx = mktInfo.get('trd_ctx')(host='127.0.0.1', port=11111)
-    quote_ctx = mktInfo.get('quote_ctx')(host='127.0.0.1', port=11111)
-    code_str = gpdm
-    unlock(trd_ctx)
-    main_deal(start_to_deal, 30, 9, trd_ctx, quote_ctx, int(mbz), code_str, float(zsx), int(gmsl), log_2_file)
+    # gpdm = 'AAPL' #股票代码
+    # gmsl = '100'  #股票数量
+    # mbz = '1'     #每笔赚
+    # zsx = 8       #止损线
+    root = Tk()
+    root.title('自动化交易助手V2.0')
+    root.geometry("1200x500+200+100")
+    root.iconbitmap(r'.\assassin.ico')
+    root.rowconfigure(1, weight=2)
+    root.columnconfigure(9, weight=2)
+    gpdm = Label(root, text=' 股票代码:',font=("黑体", 12, "bold"))
+    gpdm.grid(row=0, column=0, sticky=E+N+S+W)  
+    gpdm_entry = Entry(root)
+    gpdm_entry.grid(row=0, column=1, sticky=E+N+S+W)
+    gpdm_entry.focus_set()
+    gmsl = Label(root, text='  购买数量(手):',font=("黑体", 12, "bold"))
+    gmsl.grid(row=0, column=2, sticky=E+N+S+W)
+    gmsl_entry = Entry(root)
+    gmsl_entry.grid(row=0, column=3)
+    mbz = Label(root, text='  每笔赚:',font=("黑体", 12, "bold"))
+    mbz.grid(row =0, column=4, sticky=E+N+S+W)
+    mbz_entry3= Entry(root)
+    mbz_entry3.grid(row=0, column=5, sticky=E+N+S+W)
+    zsx = Label(root, text='  止损线：',font=("黑体", 12, "bold"))
+    zsx.grid(row =0, column=6, sticky=E+N+S+W)
+    defalut_zsx = StringVar()
+    zsx_entry = Entry(root, textvariable=defalut_zsx, width=5)
+    zsx_entry.grid(row=0, column=7, sticky=E+N+S+W)
+    defalut_zsx.set("2")
+    zsx_bfh = Label(root, text='%')
+    zsx_bfh.grid(row=0, column=8, sticky=E+N+S+W)
+    ksjy_btn = Button(root, text="开始交易", font=("黑体", 12, "bold"), command=deal_thread)
+    ksjy_btn.grid(row=0, column=9, sticky=E+N+S+W, ipadx=30)
+    tzjy_btn = Button(root, text="停止交易", font=("黑体", 12, "bold"), command=stopThread)
+    tzjy_btn.grid(row=0, column=10,sticky=E+N+S+W, ipadx=30)
+    scrollbar = Scrollbar(root, orient=VERTICAL)
+    listbox = Listbox(root, width=100, height=23, yscrollcommand = scrollbar.set)
+    listbox.grid(row=1, column=0, columnspan=11, rowspan=15, sticky=E+N+S+W, padx=10, pady=5)
+    listbox.insert(END, '')
+    scrollbar.grid(row=1, column=11,  rowspan=15, sticky=E+N+S+W, pady=5)
+    scrollbar.config(command=listbox.yview)
+    log_2_file = Logger(listbox=listbox)
+
+    root.mainloop()
