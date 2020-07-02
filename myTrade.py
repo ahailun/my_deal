@@ -59,8 +59,12 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
     last_order_status, last_order_side = get_last_order_status(trd_ctx, code, last_order_id, PWD_UNLOCK, TRD_ENV)
     if last_order_is_over(last_order_status) : #若上一次订单已经结束，则执行卖出操作
         (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(trd_ctx, code, log_2_file)
+        # log_2_file.info('plVal_or_None:%s,%s'%(plVal_or_None,type(plVal_or_None)))
+        # log_2_file.info('qty_or_None:%s,%s'%(qty_or_None,type(qty_or_None)))
+        # log_2_file.info('plRatio:%s,%s'%(plRatio,type(plRatio)))
+        # log_2_file.info('ZHISUNXIAN:%s,%s'%(ZHISUNXIAN,type(ZHISUNXIAN)))
         if iHave:
-            log_2_file.info('已持有股票:{},数量:{},在订单列表中该股票最后一次订单状态[{}]已经结束,准备下单卖出'.format(code, qty_or_None, last_order_status,last_order_side))
+            log_2_file.info('已持有股票:{},数量:{},在订单列表中该股票最后一次订单状态[{}]已经结束,准备下单卖出'.format(code, qty_or_None, last_order_status))
             if plVal_or_None - float(meibi_zhuan) - YJ - YJ > 0:
                 #达到目标利润则以当前价格卖掉
                 #超过止损线则以当前价格卖掉
@@ -89,6 +93,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
                     log_2_file.info('挂单成功，订单号:{}, 卖价{}，数量{}，挂单类型{}'.format(last_order_id, realTimePrice, qty_or_None, TrdSide.SELL))
                 else:
                     log_2_file.info('挂单失败,失败原因{}，发送微信通知'.format(data))
+                log_2_file.info('挂单止损，停止交易')
                 sys.exit(1)
             else:
                 log_2_file.info('由于没有达到盈利({plVal_or_None}-{meibi_zhuan}-{YJ}-{YJ}={yingli})或止损({plRatio}%)状态，程序未进行下单。'.format(
@@ -266,7 +271,7 @@ def deal(gpdm, gmsl, mbz, zsx, log_2_file):
     unlock(trd_ctx)
 
     #start_to_deal(trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
-    main_deal(start_to_deal, 30, 9, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl), log_2_file)
+    main_deal(start_to_deal, 30, 9, trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file)
     #main(test, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
 
 
