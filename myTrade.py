@@ -69,8 +69,8 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
                 #达到目标利润则以当前价格卖掉
                 #超过止损线则以当前价格卖掉
                 log_2_file.info('该单已盈利{},准备挂单卖出。'.format(plVal_or_None))
-                #realTimePrice = real_time_price(quote_ctx, code)
-                realTimePrice = float( "%.2f" % random.uniform(9.34, 9.35))
+                realTimePrice = real_time_price(quote_ctx, code)
+                #realTimePrice = float( "%.2f" % random.uniform(9.34, 9.35))
                 log_2_file.info('准备卖出：股票:{code},当前价格:{realTimePrice},交易数量:{qty_or_None},盈亏金额:{plVal_or_None},盈亏比例:{plRatio}'.format(\
                                 code=code, realTimePrice=realTimePrice, qty_or_None=qty_or_None, plVal_or_None=plVal_or_None, plRatio=plRatio
                                 ))
@@ -85,8 +85,8 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
                     #待增加微信通知功能
             elif  0 >  0-ZHISUNXIAN and 0-ZHISUNXIAN >= plRatio: #两个参数为负数
                 log_2_file.warn('当前交易单的亏损比例为：{:.1f}%，超过止损线：{}，以当前价格挂单。'.format(plRatio, ZHISUNXIAN))
-                #realTimePrice = real_time_price(quote_ctx, code)
-                realTimePrice = float( "%.2f" % random.uniform(9.34, 9.35))
+                realTimePrice = real_time_price(quote_ctx, code)
+                #realTimePrice = float( "%.2f" % random.uniform(9.34, 9.35))
                 ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret==RET_OK:
                     last_order_id = data['order_id'][0]
@@ -107,8 +107,8 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
             qty_or_None = now_qty #手工输入的数量
             log_2_file.info('当前没有持仓该股票:{code}'.format(code=code))
             log_2_file.info('该股票{}今天最后的订单状态是{}，方向是{},可以下单购买。'.format(code, last_order_status,last_order_side))
-            #realTimePrice = real_time_price(quote_ctx, code)
-            realTimePrice = float( "%.2f" % random.uniform(9.34, 9.35))
+            realTimePrice = real_time_price(quote_ctx, code)
+            #realTimePrice = float( "%.2f" % random.uniform(9.34, 9.35))
             log_2_file.info('准备买入股票:{},当前价格:{},交易数量:{}'.format(code, realTimePrice, qty_or_None))
             ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
             if ret == RET_OK:
