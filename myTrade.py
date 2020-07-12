@@ -93,8 +93,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
                     log_2_file.info('挂单成功，订单号:{}, 卖价{}，数量{}，挂单类型{}'.format(last_order_id, realTimePrice, qty_or_None, TrdSide.SELL))
                 else:
                     log_2_file.info('挂单失败,失败原因{}，发送微信通知'.format(data))
-                log_2_file.info('挂单止损，停止交易')
-                sys.exit(1)
+
             else:
                 log_2_file.info('由于没有达到盈利({plVal_or_None}-{meibi_zhuan}-{YJ}-{YJ}={yingli})或止损({plRatio}%)状态，程序未进行下单。'.format(
                                 plVal_or_None = plVal_or_None,
