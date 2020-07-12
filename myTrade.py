@@ -268,10 +268,18 @@ def deal(gpdm, gmsl, mbz, zsx, log_2_file):
     quote_ctx = mktInfo.get('quote_ctx')(host='127.0.0.1', port=11111)
     code_str = gpdm
     unlock(trd_ctx)
-
-    #start_to_deal(trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
-    main_deal(start_to_deal, 30, 9, trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file)
-    #main(test, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
+    try:
+        #start_to_deal(trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
+        main_deal(start_to_deal, 30, 9, trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file)
+        #main(test, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
+    except Exception as e:
+        log_2_file.error('遇到错误[%s]需要关闭客户端连接' % str(e))
+        if trd_ctx:
+            trd_ctx.close()
+            log_2_file.info('关闭当前交易连接')
+        if quote_ctx:
+            quote_ctx.close()
+            log_2_file.info('关闭当前查询连接')
 
 
 def deal_thread():
