@@ -109,9 +109,9 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
                 last_order_id = data['order_id'][0]
                 log_2_file.info('下单成功，订单号:{}, 购买价格{}，购买数量{}，挂单类型{}。'.format(last_order_id, realTimePrice, qty_or_None, TrdSide.BUY))
             else:
-                print(data,get_code_list_type(code)[0])
-                lastErrMsg = data['last_err_msg'].item()
-                log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=lastErrMsg))
+                # print(data,get_code_list_type(code)[0])#想不起来为什么这么写
+                # lastErrMsg = data['last_err_msg'].item()#想不起来为什么这么写
+                log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
     else: #若上一次订单没有结束，则继续等待
             log_2_file.info('该股票{}仍处于挂单中需继续等待，挂单状态{}。'.format(code, last_order_status))
 
