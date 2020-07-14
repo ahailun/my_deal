@@ -53,9 +53,11 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
     plRatio：盈亏比例
     Q:盈亏规则挂单后，突然股价跌破止损线的情况： plRatio > ZHISUNXIAN
     '''
-    # log_2_file.info('*'*54+' start...')
+
     global last_order_id
-    YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty, log_2_file)
+    realTimePrice = real_time_price(quote_ctx, code)
+    log_2_file.info('查询到股票:{code}当前价格:{realTimePrice}'.format(code, realTimePrice))
+    YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty, log_2_file, realTimePrice)
     last_order_status, last_order_side = get_last_order_status(trd_ctx, code, last_order_id, PWD_UNLOCK, TRD_ENV)
     if last_order_is_over(last_order_status) : #若上一次订单已经结束，则执行卖出操作
         (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(trd_ctx, code, log_2_file)
@@ -134,14 +136,16 @@ def real_time_price(quote_ctx, stock_num):
         subscribe_obj.unsubscribe_mystock_all()
         subscribe_obj.subscribe_mystock()
     print('get_code_list_type(stock_num):',get_code_list_type(stock_num)[0])
-    cur_price_df = subscribe_obj.quote_ctx.get_stock_quote(get_code_list_type(stock_num)[0])[1]
-    #--------------为调试而注释,----------------
-    if len(cur_price_df) == 0:
-        log_2_file.error('无法查询到股票{}的实时价格。'.format(stock_num))
-        raise Exception('无法查询到股票%s的实时价格。')
-    return cur_price_df.iloc[0].iat[3].item()
-    #return cur_price_df['pl_val'].item()
-
+    ret, cur_price_df = subscribe_obj.quote_ctx.get_stock_quote(get_code_list_type(stock_num)[0])
+    if ret == RET_OK:
+        if len(cur_price_df) == 0:
+            log_2_file.error('无法查询到股票{}的实时价格。'.format(stock_num))
+            raise Exception('无法查询到股票%s的实时价格。')
+        return cur_price_df.iloc[0].iat[3].item()
+        #return cur_price_df['pl_val'].item()
+    else:
+        log_2_file.error('查询到股票{code_name}实时价格时发生错误:{errorinfo}。'.format(code_name=stock_num, errorinfo=cur_price_df))
+        raise Exception('查询到股票{code_name}实时价格时发生错误:{errorinfo}。'.format(code_name=stock_num, errorinfo=cur_price_df))
 
 
 def i_have_the_stock(quote_ctx, stock_num, log_2_file):

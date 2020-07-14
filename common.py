@@ -10,6 +10,9 @@ US_STOCK = {'MKT':'US', 'trd_ctx':OpenUSTradeContext, 'quote_ctx':OpenQuoteConte
 HK_STOCK = {'MKT':'HK', 'trd_ctx':OpenHKTradeContext, 'quote_ctx':OpenQuoteContext, 'LASTTIME_BUY_PRIC':'cost_price'}
 
 US_is_price_package1 = True
+HK_is_price_package1 = True
+HK_is_price_package1_mianyong = True
+
 #佣金
 YJ_LADDER = {
     'US': {
@@ -110,39 +113,47 @@ def get_code_list_type(stock_code):
         raise Exception('找不到该股票的市场列表!')
     return code_list
 
-def myYjNow(trd_ctx, pwd_unlock, stock_num, now_qty, log_2_file):
+def myYjNow(trd_ctx, pwd_unlock, stock_num, now_qty, log_2_file, realTimePrice):
     '''
     计算佣金yj和平台使用费platcost
     '''
     cur_mkt = get_mkt(stock_num).get('MKT')
-    price_ladder = YJ_LADDER.get(cur_mkt, None)
-    if US_is_price_package1: #美股套餐一
-        yongjin_tmp = now_qty * 0.0049 if now_qty * 0.0049 > 0.99 else 0.99
-        jiaoshoufei_tmp = now_qty * 0.003
-        pingtaishiyongfei_tmp = now_qty * 0.005 if now_qty * 0.005 > 1 else 1
-        return yongjin_tmp+jiaoshoufei_tmp+pingtaishiyongfei_tmp
-    else:                    #美股阶梯收费
-        month_qty = get_cur_month_deal_total(trd_ctx, pwd_unlock, log_2_file)
-        price_ladder_price = []
-        price_ladder_num = []
-        platcost = 0.000 
-        for i in sorted(price_ladder, reverse=False): 
-            price_ladder_price.append(i)
-            price_ladder_num.append(price_ladder[i][0])
-        #print(price_ladder_price,price_ladder_num)
-        if not len(price_ladder_price) == len(price_ladder_num):
-            raise Exception('阶梯价格设置对应格式错误')
-        for idx in range(0, len(price_ladder_price)): 
-            if now_qty+month_qty>price_ladder_num[idx]:  
-                if price_ladder_num[idx]==1:
-                    platcost+=now_qty*float(price_ladder_price[idx])
-                else:
-                    platcost+=(now_qty+month_qty-price_ladder_num[idx]+1)*float(price_ladder_price[idx])
-                    if price_ladder_num[idx]-1-month_qty > 0:
-                        platcost+=(price_ladder_num[idx]-1-month_qty)*float(price_ladder_price[idx+1])
-                break
-        yj = now_qty * 0.0049 if now_qty * 0.0049 > 0.99 else 0.99
-        return platcost + yj
+    if 'US' in cur_mkt:          #若当前交易为美股
+        price_ladder = YJ_LADDER.get(cur_mkt, None)
+        if US_is_price_package1: #美股套餐一
+            yongjin_tmp = now_qty * 0.0049 if now_qty * 0.0049 > 0.99 else 0.99
+            jiaoshoufei_tmp = now_qty * 0.003
+            pingtaishiyongfei_tmp = now_qty * 0.005 if now_qty * 0.005 > 1 else 1
+            return yongjin_tmp+jiaoshoufei_tmp+pingtaishiyongfei_tmp
+        else:                    #美股阶梯收费
+            month_qty = get_cur_month_deal_total(trd_ctx, pwd_unlock, log_2_file)
+            price_ladder_price = []
+            price_ladder_num = []
+            platcost = 0.000 
+            for i in sorted(price_ladder, reverse=False): 
+                price_ladder_price.append(i)
+                price_ladder_num.append(price_ladder[i][0])
+            #print(price_ladder_price,price_ladder_num)
+            if not len(price_ladder_price) == len(price_ladder_num):
+                raise Exception('阶梯价格设置对应格式错误')
+            for idx in range(0, len(price_ladder_price)): 
+                if now_qty+month_qty>price_ladder_num[idx]:  
+                    if price_ladder_num[idx]==1:
+                        platcost+=now_qty*float(price_ladder_price[idx])
+                    else:
+                        platcost+=(now_qty+month_qty-price_ladder_num[idx]+1)*float(price_ladder_price[idx])
+                        if price_ladder_num[idx]-1-month_qty > 0:
+                            platcost+=(price_ladder_num[idx]-1-month_qty)*float(price_ladder_price[idx+1])
+                    break
+            yj = now_qty * 0.0049 if now_qty * 0.0049 > 0.99 else 0.99
+            return platcost + yj
+    if 'HK' in cur_mkt:
+        total_cost = now_qty * realTimePrice
+        if HK_is_price_package1:
+            yj = 0 if HK_is_price_package1_mianyong else max(3, total_cost * 3 / 10000) #港股佣金0.03%,若免用则为0
+            jiaoshoufei_tmp = min(100, max(2, total_cost * 2 /100000))    #港股交收费0.002%,最低2港元，最高100港元
+            platcost = 15
+            return yj + jiaoshoufei_tmp + platcost
 
 if __name__ == "__main__":
-    myYjNow('trd_ctx', 'pwd_unlock', 'stocknum', 'now_qty')
+    myYjNow('trd_ctx', 'pwd_unlock', 'stocknum', 'now_qty', 100)
