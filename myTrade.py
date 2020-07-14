@@ -32,6 +32,9 @@ NEED_NOT_SUBSCRIBE = 2
 #根据上一次的订单号查询状态
 last_order_id = None
 
+
+last_order_time = 0.00000 #记录上一次订单时间
+delte_order_time = 0.3          #撤单间隔时间
 #交易
 is_debug = True
 PWD_UNLOCK = '140108'
@@ -53,8 +56,8 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
     plRatio：盈亏比例
     Q:盈亏规则挂单后，突然股价跌破止损线的情况： plRatio > ZHISUNXIAN
     '''
-
     global last_order_id
+    global last_order_time
     realTimePrice = real_time_price(quote_ctx, code)
     log_2_file.info('查询到股票:{code}当前价格:{realTimePrice}'.format(code, realTimePrice))
     YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty, log_2_file, realTimePrice)
@@ -75,6 +78,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
                                 ))
                 ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret==RET_OK:
+                    last_order_time = time.time()
                     last_order_id = data['order_id'][0]
                     log_2_file.info('下单成功，订单号:{}, 卖出价格{}，卖出数量{}，挂单类型{}.'.format(last_order_id, realTimePrice, qty_or_None, TrdSide.SELL))
                 else:
@@ -87,6 +91,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
                 realTimePrice = real_time_price(quote_ctx, code)
                 ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret==RET_OK:
+                    last_order_time = time.time()
                     last_order_id = data['order_id'][0]
                     log_2_file.info('挂单成功，订单号:{}, 卖价{}，数量{}，挂单类型{}'.format(last_order_id, realTimePrice, qty_or_None, TrdSide.SELL))
                 else:
@@ -106,13 +111,27 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
             log_2_file.info('准备买入股票:{},当前价格:{},交易数量:{}'.format(code, realTimePrice, qty_or_None))
             ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
             if ret == RET_OK:
+                last_order_time = time.time()
                 last_order_id = data['order_id'][0]
                 log_2_file.info('下单成功，订单号:{}, 购买价格{}，购买数量{}，挂单类型{}。'.format(last_order_id, realTimePrice, qty_or_None, TrdSide.BUY))
             else:
                 # print(data,get_code_list_type(code)[0])#想不起来为什么这么写
                 # lastErrMsg = data['last_err_msg'].item()#想不起来为什么这么写
                 log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
-    else: #若上一次订单没有结束，则继续等待
+    else: 
+        #挂单后经过delte_order_time还没有成交，则进行撤单(模拟交易不支持撤单，暂以改单进行)
+        cur_time = time.time()
+        if cur_time - last_order_time >= delte_order_time:
+            log_2_file.info('该股票{}处于挂单中{}超过{}秒，进行改单。'.format(code, last_order_status, delte_order_time))
+            realTimePrice = real_time_price(quote_ctx, code)
+            ret, data = trd_ctx.change_order(last_order_id, realTimePrice, qty_or_None, trd_env=TRD_ENV)
+            if ret == RET_OK:
+                last_order_time = time.time()
+                last_order_id = data['order_id'][0]
+                log_2_file.info('该股票{}改单成功，订单ID{}，订单价格{}。'.format(code, last_order_id, realTimePrice))
+            else:
+                log_2_file.error('该股票{}改单失败，原因是:{}。'.format(code, data))
+        else:
             log_2_file.info('该股票{}仍处于挂单中需继续等待，挂单状态{}。'.format(code, last_order_status))
 
 def real_time_price(quote_ctx, stock_num):
