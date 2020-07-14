@@ -16,7 +16,9 @@ class Logger:
         # sh.setFormatter(fmt)
         # sh.setLevel(clevel)
         #设置文件日志
-        log_path = os.path.dirname(os.getcwd()) + '/Logs/'
+        log_path = os.getcwd() + '/Logs/'
+        if not os.path.exists(log_path):
+            os.mkdir(log_path)
         fh = logging.FileHandler(log_path+logfile)
         fh.setFormatter(fmt)
         fh.setLevel(Flevel)
