@@ -33,8 +33,9 @@ NEED_NOT_SUBSCRIBE = 2
 last_order_id = None
 
 
-last_order_time = 0.00000 #记录上一次订单时间
+last_order_time  = 0.00000      #记录上一次订单时间
 delte_order_time = 0.3          #撤单间隔时间
+qty_or_None      = 0            #记录股票数量，撤单用
 #交易
 is_debug = True
 PWD_UNLOCK = '140108'
@@ -58,8 +59,9 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
     '''
     global last_order_id
     global last_order_time
+    global qty_or_None
     realTimePrice = real_time_price(quote_ctx, code)
-    log_2_file.info('查询到股票:{code}当前价格:{realTimePrice}'.format(code, realTimePrice))
+    log_2_file.info('查询到股票:{}当前价格:{}'.format(code, realTimePrice))
     YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty, log_2_file, realTimePrice)
     last_order_status, last_order_side = get_last_order_status(trd_ctx, code, last_order_id, PWD_UNLOCK, TRD_ENV)
     if last_order_is_over(last_order_status) : 
@@ -72,7 +74,6 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
                 #达到目标利润则以当前价格卖掉，超过止损线则以当前价格卖掉
                 log_2_file.info('该单已盈利{},准备挂单卖出。'.format(plVal_or_None))
                 realTimePrice = real_time_price(quote_ctx, code)
-                #realTimePrice = float( "%.2f" % random.uniform(9.34, 9.35))
                 log_2_file.info('准备卖出：股票:{code},当前价格:{realTimePrice},交易数量:{qty_or_None},盈亏金额:{plVal_or_None},盈亏比例:{plRatio}'.format(\
                                 code=code, realTimePrice=realTimePrice, qty_or_None=qty_or_None, plVal_or_None=plVal_or_None, plRatio=plRatio
                                 ))
@@ -124,6 +125,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
         if cur_time - last_order_time >= delte_order_time:
             log_2_file.info('该股票{}处于挂单中{}超过{}秒，进行改单。'.format(code, last_order_status, delte_order_time))
             realTimePrice = real_time_price(quote_ctx, code)
+            #realTimePrice = float( "%.2f" % random.uniform(13.54, 13.55))
             ret, data = trd_ctx.change_order(last_order_id, realTimePrice, qty_or_None, trd_env=TRD_ENV)
             if ret == RET_OK:
                 last_order_time = time.time()
@@ -146,14 +148,14 @@ def real_time_price(quote_ctx, stock_num):
     if subscribe_obj.sub_status == CAN_NOT_SUBSCRIBE:
         subscribe_obj.unsubscribe_mystock_all()
         subscribe_obj.subscribe_mystock()
-    print('get_code_list_type(stock_num):',get_code_list_type(stock_num)[0])
     ret, cur_price_df = subscribe_obj.quote_ctx.get_stock_quote(get_code_list_type(stock_num)[0])
     if ret == RET_OK:
         if len(cur_price_df) == 0:
             log_2_file.error('无法查询到股票{}的实时价格。'.format(stock_num))
-            raise Exception('无法查询到股票%s的实时价格。')
-        return cur_price_df.iloc[0].iat[3].item()
-        #return cur_price_df['pl_val'].item()
+            raise Exception('无法查询到股票{}的实时价格。'.format(stock_num))
+        else:
+            return cur_price_df.iloc[0].iat[3].item()
+            #return cur_price_df['pl_val'].item()
     else:
         log_2_file.error('查询到股票{code_name}实时价格时发生错误:{errorinfo}。'.format(code_name=stock_num, errorinfo=cur_price_df))
         raise Exception('查询到股票{code_name}实时价格时发生错误:{errorinfo}。'.format(code_name=stock_num, errorinfo=cur_price_df))
