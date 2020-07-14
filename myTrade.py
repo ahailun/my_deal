@@ -7,6 +7,7 @@ from tkinter import messagebox as tkMessageBox
 import sys, time
 from logger import Logger
 import random
+import ctypes
 from common import is_HK_mkt, is_US_mkt, get_code_list_type, get_last_order_status, get_mkt, \
                     last_order_is_over,myYjNow
 
@@ -310,7 +311,8 @@ def deal_thread():
 def stopThread():
     pass
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("myappid") 
     # import sys
     # gpdm = 'AAPL' #股票代码
     # gmsl = '100'  #股票数量
