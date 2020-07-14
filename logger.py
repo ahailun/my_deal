@@ -1,13 +1,13 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
-import time, logging
+import os, time, logging
 from tkinter import END
 
 #TODO 按照日志文件大小分割https://www.jianshu.com/p/c373cd6c628f
 class Logger:
     def __init__(self, listbox=None, logfile=time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime(time.time()))+'.log', clevel = logging.DEBUG, Flevel = logging.DEBUG):
-        self.logger = logging.getLogger(logfile)
+        self.logger = logging.getLogger()
         self.logger.setLevel(logging.DEBUG)
         self.listbox = listbox
         fmt = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s')
@@ -16,7 +16,8 @@ class Logger:
         # sh.setFormatter(fmt)
         # sh.setLevel(clevel)
         #设置文件日志
-        fh = logging.FileHandler(logfile)
+        log_path = os.path.dirname(os.getcwd()) + '/Logs/'
+        fh = logging.FileHandler(log_path+logfile)
         fh.setFormatter(fmt)
         fh.setLevel(Flevel)
         # self.logger.addHandler(sh)
