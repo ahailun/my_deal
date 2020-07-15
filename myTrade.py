@@ -329,7 +329,7 @@ if __name__ == "__main__":
     gpdm_entry = Entry(root)
     gpdm_entry.grid(row=0, column=1, sticky=E+N+S+W)
     gpdm_entry.focus_set()
-    gmsl = Label(root, text='  购买数量(手):',font=("黑体", 12, "bold"))
+    gmsl = Label(root, text='  购买数量(股):',font=("黑体", 12, "bold"))
     gmsl.grid(row=0, column=2, sticky=E+N+S+W)
     gmsl_entry = Entry(root)
     gmsl_entry.grid(row=0, column=3)
