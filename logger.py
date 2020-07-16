@@ -32,28 +32,28 @@ class Logger:
     def debug(self,message):
         self.logger.debug(message)
         if self.listbox:
-            self.listbox.insert(END,  '[ %s ] [ Debug ] ' % time.strftime("%Y-%m-%d %X",time.localtime()) + message)
+            self.listbox.insert(END,  '[ %s ] [ Debug ] ' % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f') + message)
             self.listbox.yview_moveto(1)
             self.listbox.update()
 
     def info(self,message):
         self.logger.info(message)
         if self.listbox:
-            self.listbox.insert(END, '[ %s ] [ Info ] ' % time.strftime("%Y-%m-%d %X",time.localtime()) + message)
+            self.listbox.insert(END, '[ %s ] [ Info ] ' % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f') + message)
             self.listbox.yview_moveto(1)
             self.listbox.update()
 
     def warn(self,message):
         self.logger.warn(message)
         if self.listbox:
-            self.listbox.insert(END, '[ %s ] [ Warn ] ' % time.strftime("%Y-%m-%d %X",time.localtime()) + message)
+            self.listbox.insert(END, '[ %s ] [ Warn ] ' % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f') + message)
             self.listbox.yview_moveto(1)
             self.listbox.update()
 
     def error(self,message):
         self.logger.error(message)
         if self.listbox:
-            self.listbox.insert(END, '[ %s ] [ Error ] ' % time.strftime("%Y-%m-%d %X",time.localtime()) + message)
+            self.listbox.insert(END, '[ %s ] [ Error ] ' % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f') + message)
             self.listbox.yview_moveto(1)
             self.listbox.update()
 
