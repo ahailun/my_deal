@@ -224,7 +224,7 @@ def test():
 
 class SubsCribe(object):
     def __init__(self, quote_ctx, stock_code, writer_handler=log_2_file):
-        self.quote_ctx = OpenQuoteContext(host='127.0.0.1', port=11111)
+        self.quote_ctx = quote_ctx
         self.stock_code = stock_code.strip()
         self.writer_handler = writer_handler
         self.sub_status = None
