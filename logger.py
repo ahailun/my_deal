@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
-import os, time, logging
+import os, time, logging, datetime
 from tkinter import END
 
 #TODO 按照日志文件大小分割https://www.jianshu.com/p/c373cd6c628f
