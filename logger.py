@@ -11,19 +11,14 @@ class Logger:
         self.logger.setLevel(logging.DEBUG)
         self.listbox = listbox
         fmt = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s')
-        #设置CMD日志
-        # sh = logging.StreamHandler()
-        # sh.setFormatter(fmt)
-        # sh.setLevel(clevel)
-        #设置文件日志
         log_path = os.getcwd() + '/Logs/'
         if not os.path.exists(log_path):
             os.mkdir(log_path)
-        fh = logging.FileHandler(log_path+logfile)
-        fh.setFormatter(fmt)
-        fh.setLevel(Flevel)
-        # self.logger.addHandler(sh)
-        self.logger.addHandler(fh)
+        if not self.logger.handlers:
+            fh = logging.FileHandler(log_path+logfile)
+            fh.setFormatter(fmt)
+            fh.setLevel(Flevel)
+            self.logger.addHandler(fh)
         if self.listbox:
             self.listbox.delete(0, END)
             self.listbox.yview_moveto(1)
