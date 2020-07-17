@@ -88,7 +88,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
                     #lastErrMsg = data['last_err_msg'].item()
                     log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
                     #待增加微信通知功能
-            elif  0 >  0-ZHISUNXIAN and 0-ZHISUNXIAN >= plRatio: #两个参数为负数
+            elif  0 >=  0-ZHISUNXIAN and 0-ZHISUNXIAN >= plRatio: #两个参数为负数
                 log_2_file.warn('当前交易单的亏损比例为：{:.1f}%，超过止损线：{}，以当前价格挂单。'.format(plRatio, ZHISUNXIAN))
                 realTimePrice = real_time_price(quote_ctx, code)
                 ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
