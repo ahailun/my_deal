@@ -356,7 +356,7 @@ if __name__ == "__main__":
     zsx_bfh.grid(row=0, column=8, sticky=E+N+S+W)
     ksjy_btn = Button(root, text="开始交易", font=("黑体", 12, "bold"), command=deal_thread)
     ksjy_btn.grid(row=0, column=9, sticky=E+N+S+W, ipadx=30)
-    tzjy_btn = Button(root, text="停止交易", font=("黑体", 12, "bold"), command=stopThread)
+    tzjy_btn = Button(root, text="暂停交易", font=("黑体", 12, "bold"), command=stopThread)
     tzjy_btn.grid(row=0, column=10,sticky=E+N+S+W, ipadx=30)
     scrollbar = Scrollbar(root, orient=VERTICAL)
     listbox = Listbox(root, width=100, height=23, yscrollcommand = scrollbar.set)
