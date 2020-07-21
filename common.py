@@ -61,6 +61,8 @@ def get_last_order_status(trd_ctx, code, orderid, pwd_unlock, TRD_ENV):
         ret, data = trd_ctx.order_list_query(code=code, trd_env=TRD_ENV, start=start_tm, end=end_tm)
     if ret == 0:
         if len(data) != 0:
+            if isinstance(data, str):
+                raise Exception(data)
             for index, row in data.iterrows():
                 if index==0:
                     return row['order_status'], row['trd_side']
