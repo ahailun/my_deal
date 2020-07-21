@@ -41,6 +41,7 @@ qty_or_None      = 0            #记录股票数量，撤单用
 is_debug = True
 PWD_UNLOCK = '140108'
 TRD_ENV = TrdEnv.SIMULATE if is_debug else TrdEnv.REAL
+DEAL_PAUSE = False              #暂停交易
 
 def unlock(trd_ctx):
     ret, data = trd_ctx.unlock_trade(PWD_UNLOCK)
@@ -61,6 +62,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
     global last_order_id
     global last_order_time
     global qty_or_None
+    global DEAL_PAUSE
     realTimePrice = real_time_price(quote_ctx, code)
     log_2_file.info('查询到股票:{}当前价格:{}'.format(code, realTimePrice))
     YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty, log_2_file, realTimePrice)
@@ -70,6 +72,8 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
         (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(trd_ctx, code, log_2_file)
         # log_2_file.info('plVal_or_None:%s,%s'%(plVal_or_None,type(plVal_or_None)))
         if iHave:
+            if DEAL_PAUSE:
+                log_2_file.warn('已持仓股票，待挂单后程序会自动暂停，请等待。'.format(code, qty_or_None))
             log_2_file.info('已持有股票:{},数量:{},在订单列表中该股票最后一次订单状态[{}]已经结束,准备下单卖出'.format(code, qty_or_None, last_order_status))
             if plVal_or_None - float(meibi_zhuan) - YJ - YJ > 0:
                 #达到目标利润则以当前价格卖掉，超过止损线则以当前价格卖掉
@@ -107,6 +111,8 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
                                 plRatio = plRatio
                             ))
         else:
+            if DEAL_PAUSE:
+                raise Exception('用户暂停了程序交易.....')
             qty_or_None = now_qty #手工输入的数量
             log_2_file.info('当前没有持仓该股票{}今天最后的订单状态是{}，方向是{},可以下单购买。'.format(code, last_order_status,last_order_side))
             realTimePrice = real_time_price(quote_ctx, code)
@@ -281,6 +287,8 @@ class SubsCribe(object):
     
 
 def deal(gpdm, gmsl, mbz, zsx, log_2_file):
+    global DEAL_PAUSE
+    DEAL_PAUSE = False
     mktInfo = get_mkt(gpdm)
     trd_ctx = mktInfo.get('trd_ctx')(host='127.0.0.1', port=11111)
     quote_ctx = mktInfo.get('quote_ctx')(host='127.0.0.1', port=11111)
@@ -291,7 +299,7 @@ def deal(gpdm, gmsl, mbz, zsx, log_2_file):
         main_deal(start_to_deal, 30, 9, trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file)
         #main(test, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
     except Exception as e:
-        log_2_file.error('遇到错误[%s]需要关闭客户端连接' % str(e))
+        log_2_file.error('遇到异常[%s]需要关闭客户端连接' % str(e))
         if trd_ctx:
             trd_ctx.close()
             log_2_file.info('关闭当前交易连接')
@@ -309,7 +317,8 @@ def deal_thread():
     
 
 def stopThread():
-    pass
+    global DEAL_PAUSE
+    DEAL_PAUSE = True
 
 if __name__ == "__main__":    
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("myappid") 
