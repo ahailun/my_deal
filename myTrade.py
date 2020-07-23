@@ -351,7 +351,7 @@ if __name__ == "__main__":
     root.geometry("1200x500+200+100")
     root.iconbitmap(r'.\assassin.ico')
     root.rowconfigure(1, weight=2)
-    root.columnconfigure(9, weight=2)
+    root.columnconfigure(10, weight=2)
     gpdm = Label(root, text=' 股票代码:',font=("黑体", 12, "bold"))
     gpdm.grid(row=0, column=0, sticky=E+N+S+W)  
     gpdm_entry = Entry(root)
