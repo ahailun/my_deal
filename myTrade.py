@@ -11,6 +11,8 @@ import ctypes
 from common import is_HK_mkt, is_US_mkt, get_code_list_type, get_last_order_status, get_mkt, \
                     last_order_is_over,myYjNow
 
+lock=threading.Lock()
+
 log_2_file = Logger()
 
 #订阅数量要求，每个订阅类型占用一个额度，我名下额度默认为300
@@ -62,6 +64,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
     global last_order_id
     global last_order_time
     global qty_or_None
+
     global DEAL_PAUSE
     realTimePrice = real_time_price(quote_ctx, code)
     log_2_file.info('查询到股票:{}当前价格:{}'.format(code, realTimePrice))
@@ -73,7 +76,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
         # log_2_file.info('plVal_or_None:%s,%s'%(plVal_or_None,type(plVal_or_None)))
         if iHave:
             if DEAL_PAUSE:
-                log_2_file.warn('已持仓股票，待挂单后程序会自动暂停，请等待。'.format(code, qty_or_None))
+                log_2_file.warn('已持仓股票{}，待挂单后程序会自动暂停，请等待。'.format(code))
             log_2_file.info('已持有股票:{},数量:{},在订单列表中该股票最后一次订单状态[{}]已经结束,准备下单卖出'.format(code, qty_or_None, last_order_status))
             if plVal_or_None - float(meibi_zhuan) - YJ - YJ > 0:
                 #达到目标利润则以当前价格卖掉，超过止损线则以当前价格卖掉
@@ -112,6 +115,8 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
                             ))
         else:
             if DEAL_PAUSE:
+                if (ksjy_btn['state'] == DISABLED):
+                    ksjy_btn['state'] =NORMAL 
                 raise Exception('用户暂停了程序交易.....')
             qty_or_None = now_qty #手工输入的数量
             log_2_file.info('当前没有持仓该股票{}今天最后的订单状态是{}，方向是{},可以下单购买。'.format(code, last_order_status,last_order_side))
@@ -132,7 +137,6 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
         if cur_time - last_order_time >= delte_order_time:
             log_2_file.info('该股票{}处于挂单中{}超过{}秒，进行改单。'.format(code, last_order_status, delte_order_time))
             realTimePrice = real_time_price(quote_ctx, code)
-            #realTimePrice = float( "%.2f" % random.uniform(13.54, 13.55))
             ret, data = trd_ctx.change_order(last_order_id, realTimePrice, qty_or_None, trd_env=TRD_ENV)
             if ret == RET_OK:
                 last_order_time = time.time()
@@ -287,6 +291,11 @@ class SubsCribe(object):
     
 
 def deal(gpdm, gmsl, mbz, zsx, log_2_file):
+    global lock
+    lock.acquire()
+    ksjy_btn['state'] = DISABLED
+    if (tzjy_btn['state'] == DISABLED):
+        tzjy_btn['state'] =NORMAL 
     global DEAL_PAUSE
     DEAL_PAUSE = False
     mktInfo = get_mkt(gpdm)
@@ -295,9 +304,11 @@ def deal(gpdm, gmsl, mbz, zsx, log_2_file):
     code_str = gpdm
     unlock(trd_ctx)
     try:
+        
         #start_to_deal(trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
         main_deal(start_to_deal, 30, 9, trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file)
         #main(test, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
+        
     except Exception as e:
         log_2_file.error('遇到异常[%s]需要关闭客户端连接' % str(e))
         if trd_ctx:
@@ -306,7 +317,14 @@ def deal(gpdm, gmsl, mbz, zsx, log_2_file):
         if quote_ctx:
             quote_ctx.close()
             log_2_file.info('关闭当前查询连接')
-
+    finally:
+        lock.release()
+        
+def stopp():
+    tzjy_btn['state'] = DISABLED
+    tkMessageBox.showwarning('警告','待空仓后程序自动会停止，请跟进！')
+    global DEAL_PAUSE
+    DEAL_PAUSE = True
 
 def deal_thread():
     # #gpdm, gmsl, mbz, zsx
@@ -316,9 +334,10 @@ def deal_thread():
     th.start()    
     
 
-def stopThread():
-    global DEAL_PAUSE
-    DEAL_PAUSE = True
+def stop_thread():
+    ts=threading.Thread(target=stopp, args=())        
+    ts.setDaemon(True)    
+    ts.start() 
 
 if __name__ == "__main__":    
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("myappid") 
@@ -356,7 +375,7 @@ if __name__ == "__main__":
     zsx_bfh.grid(row=0, column=8, sticky=E+N+S+W)
     ksjy_btn = Button(root, text="开始交易", font=("黑体", 12, "bold"), command=deal_thread)
     ksjy_btn.grid(row=0, column=9, sticky=E+N+S+W, ipadx=30)
-    tzjy_btn = Button(root, text="暂停交易", font=("黑体", 12, "bold"), command=stopThread)
+    tzjy_btn = Button(root, text="暂停交易", state='disable',font=("黑体", 12, "bold"), command=stop_thread)
     tzjy_btn.grid(row=0, column=10,sticky=E+N+S+W, ipadx=30)
     scrollbar = Scrollbar(root, orient=VERTICAL)
     listbox = Listbox(root, width=100, height=23, yscrollcommand = scrollbar.set)
