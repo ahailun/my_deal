@@ -3,6 +3,7 @@
 
 from tkinter import *
 from futu import *
+from tkinter import ttk
 from tkinter import messagebox as tkMessageBox
 import sys, time
 from logger import Logger
@@ -304,7 +305,6 @@ def deal(gpdm, gmsl, mbz, zsx, log_2_file):
     code_str = gpdm
     unlock(trd_ctx)
     try:
-        
         #start_to_deal(trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
         main_deal(start_to_deal, 30, 9, trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file)
         #main(test, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
@@ -338,6 +338,17 @@ def stop_thread():
     ts=threading.Thread(target=stopp, args=())        
     ts.setDaemon(True)    
     ts.start() 
+
+def callback(eventObject): 
+    global is_debug
+    if '模拟交易' in env.get():
+        is_debug = True
+        print('开始模拟交易......')
+    if '真实交易' in env.get():
+        is_debug = False
+        print('开始真实交易......')
+
+
 
 if __name__ == "__main__":    
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("myappid") 
@@ -373,16 +384,23 @@ if __name__ == "__main__":
     defalut_zsx.set("2")
     zsx_bfh = Label(root, text='%')
     zsx_bfh.grid(row=0, column=8, sticky=E+N+S+W)
+    env = StringVar()
+    cmb_env = ttk.Combobox(root, font=("黑体", 12, "bold"), textvariable=env)
+    cmb_env['value'] = ('模拟交易','真实交易')
+    cmb_env.current(0)
+    cmb_env.grid(row=1, column=1,)  
+    cmb_env.bind("<<ComboboxSelected>>", callback) 
     ksjy_btn = Button(root, text="开始交易", font=("黑体", 12, "bold"), command=deal_thread)
-    ksjy_btn.grid(row=0, column=9, sticky=E+N+S+W, ipadx=30)
+    ksjy_btn.grid(row=1, column=2, ipadx=30)
     tzjy_btn = Button(root, text="暂停交易", state='disable',font=("黑体", 12, "bold"), command=stop_thread)
-    tzjy_btn.grid(row=0, column=10,sticky=E+N+S+W, ipadx=30)
+    tzjy_btn.grid(row=1, column=3, ipadx=30)
     scrollbar = Scrollbar(root, orient=VERTICAL)
     listbox = Listbox(root, width=100, height=23, yscrollcommand = scrollbar.set)
-    listbox.grid(row=1, column=0, columnspan=11, rowspan=15, sticky=E+N+S+W, padx=10, pady=5)
+    listbox.grid(row=2, column=0, columnspan=11, rowspan=15, sticky=E+N+S+W, padx=10, pady=5)
     listbox.insert(END, '')
-    scrollbar.grid(row=1, column=11,  rowspan=15, sticky=E+N+S+W, pady=5)
+    scrollbar.grid(row=2, column=11,  rowspan=15, sticky=E+N+S+W, pady=5)
     scrollbar.config(command=listbox.yview)
     log_2_file = Logger(listbox=listbox)
+    
 
     root.mainloop()
