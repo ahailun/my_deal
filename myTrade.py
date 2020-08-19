@@ -92,7 +92,7 @@ def start_to_deal(trd_ctx, quote_ctx, code,xiayici_mairujia, xiayici_maichujia,q
                 else:
                     log_2_file.error('直接下买单失败，原因{}。'.format(data))
             elif LAST_ORDER_PRICE!=0:
-                #持续交易中，等待价格下降后买入
+                #持续交易中，空仓时，等待价格下降后买入
                 tmp_price_fudu = 100 * (realTimePrice - LAST_ORDER_PRICE )/realTimePrice
                 if  tmp_price_fudu<0 and abs(tmp_price_fudu)>= xiayici_mairujia:
                     ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
@@ -105,15 +105,15 @@ def start_to_deal(trd_ctx, quote_ctx, code,xiayici_mairujia, xiayici_maichujia,q
                         log_2_file.info('下单成功，订单号:{}, 买入价格{}，买入数量{}，挂单类型{}.'.format(last_order_id, realTimePrice, qty_or_None, OrderType.NORMAL))
                 else:
                     if tmp_price_fudu>0:
-                        log_2_file.info('未持有该股票，前一次卖出价{}，价格{:.4f}已上升,等待买入。'.format(LAST_ORDER_PRICE,realTimePrice))
+                        log_2_file.info('未持有该股票，前一次卖出价{}，价格{:.4f}已上升,等待下降后再买入。'.format(LAST_ORDER_PRICE,realTimePrice))
                     if tmp_price_fudu<0 and abs(tmp_price_fudu)< xiayici_mairujia:
-                        log_2_file.info('未持有该股票，前一次卖出价{}，价格{:.4f}已下降{:.2f}%,等待买入。'.format(LAST_ORDER_PRICE,realTimePrice,tmp_price_fudu))
+                        log_2_file.info('未持有该股票，前一次卖出价{}，价格{:.4f}已下降{:.2f}%,须价格下降{}%后买入。'.format(LAST_ORDER_PRICE,realTimePrice,tmp_price_fudu)，xiayici_mairujia)
         elif LAST_ORDER_DIREACTION==0:
             #已持仓，等待价格上升后卖出
             log_2_file.info('上一次是购买，现在等待机会卖出')
             tmp_price_fudu_maichu = 100*(realTimePrice - LAST_ORDER_PRICE)/LAST_ORDER_PRICE
-            if tmp_price_fudu_maichu > xiayici_maichujia:
-                log_2_file.info('价格已从{}升高至{}，准备下单卖出。'.format(LAST_ORDER_PRICE,realTimePrice))
+            if tmp_price_fudu_maichu >= xiayici_maichujia:
+                log_2_file.info('价格已从{}升高至{}，上升幅度超过设定比{}%,准备下单卖出。'.format(LAST_ORDER_PRICE,realTimePrice,xiayici_maichujia))
                 ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret==RET_OK:
                     LAST_ORDER_DIREACTION = 1
@@ -125,7 +125,7 @@ def start_to_deal(trd_ctx, quote_ctx, code,xiayici_mairujia, xiayici_maichujia,q
                 else:
                     log_2_file.info('下单卖出失败，原因：{}。'.format(data))
             else:
-                log_2_file.info('买入价{}，当前价格{}，变化率[{}]未达到预期[{}]。'.format(LAST_ORDER_PRICE, realTimePrice,tmp_price_fudu_maichu,xiayici_maichujia))
+                log_2_file.info('买入价{}，当前价格{}，上升幅度[{}%]未达到预期[{}%]。'.format(LAST_ORDER_PRICE, realTimePrice,tmp_price_fudu_maichu,xiayici_maichujia))
 
 def real_time_price(quote_ctx, stock_num):
     '''
