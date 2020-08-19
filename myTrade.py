@@ -125,7 +125,7 @@ def start_to_deal(trd_ctx, quote_ctx, code,xiayici_mairujia, xiayici_maichujia,q
                     last_order_id = data['order_id'][0]
                     log_2_file.info('下单成功，订单号:{}, 卖出价格{}，卖出数量{}，挂单类型{}.'.format(last_order_id, realTimePrice, qty_or_None, OrderType.NORMAL))
                 else:
-                    log_2_file.info('下单卖出失败，原因：{}。'.format(data))
+                    log_2_file.info('下单卖出失败，原因：{}，时间{}-{},交易次数{}。'.format(data,time.time(),LAST_ORDER_TIME_IN_PERIOD,ORDER_COUNT_IN_PERIOD))
             else:
                 log_2_file.info('买入价{}，当前价格{}，上升幅度[{:.4f}%]未达到预期[{}%]。'.format(LAST_ORDER_PRICE, realTimePrice,tmp_price_fudu_maichu,xiayici_maichujia))
 
