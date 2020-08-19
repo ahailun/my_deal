@@ -33,18 +33,18 @@ NEED_SUBSCRIBE = 0
 CAN_NOT_SUBSCRIBE = 1   
 NEED_NOT_SUBSCRIBE = 2
 
-#根据上一次的订单号查询状态
-last_order_id = None
-
-
-last_order_time  = 0.00000      #记录上一次订单时间
-delte_order_time = 0.3          #撤单间隔时间
-qty_or_None      = 0            #记录股票数量，撤单用
+last_order_id = None         #根据上一次的订单号查询状态
+qty_or_None   = 0            #记录股票数量，撤单用
 #交易
 is_debug = True
 PWD_UNLOCK = '140108'
 TRD_ENV = TrdEnv.SIMULATE if is_debug else TrdEnv.REAL
-DEAL_PAUSE = False              #暂停交易
+
+
+LAST_ORDER_DIREACTION=1                      #:上一次交易方向，0::BUY/1:SELl,str
+LAST_ORDER_PRICE=0                           #:上一次交易价格，0.000，float
+LAST_ORDER_TIME_IN_PERIOD=time.time()        #:上一次交易时间，time.time
+ORDER_COUNT_IN_PERIOD=0                      #:30s周期内交易的次数，int，取值0~15
 
 def unlock(trd_ctx):
     ret, data = trd_ctx.unlock_trade(PWD_UNLOCK)
@@ -52,101 +52,80 @@ def unlock(trd_ctx):
         return True
     return False
 
-def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, log_2_file):
+def start_to_deal(trd_ctx, quote_ctx, code,xiayici_mairujia, xiayici_maichujia,qty_or_None, log_2_file):
     '''
     code:HK.00700
-    YJ：单程佣金
-    ZHISUNXIAN:取整，例如10意为10%
-    plVal_or_None:盈亏金额
+    xiayici_mairujia,价格下跌多少百分比后买入，2-->2%
+    xiayici_maichujia,价格上升多少百分比后卖出，2-->2%
     qty_or_None:数量
-    plRatio：盈亏比例
-    Q:盈亏规则挂单后，突然股价跌破止损线的情况： plRatio > ZHISUNXIAN
+    LAST_ORDER_DIREACTION:上一次交易方向，BUY/SELl,str
+    LAST_ORDER_PRICE:上一次交易价格，0.000，float
+    LAST_ORDER_TIME_IN_PERIOD:上一次交易时间，time.time
+    ORDER_COUNT_IN_PERIOD:30s周期内交易的次数，int，取值0~15
     '''
-    global last_order_id
-    global last_order_time
-    global qty_or_None
 
-    global DEAL_PAUSE
-    realTimePrice = real_time_price(quote_ctx, code)
-    log_2_file.info('查询到股票:{}当前价格:{}'.format(code, realTimePrice))
-    YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty, log_2_file, realTimePrice)
-    last_order_status, last_order_side = get_last_order_status(trd_ctx, code, last_order_id, PWD_UNLOCK, TRD_ENV)
-    if last_order_is_over(last_order_status) : 
-        #若上一次订单已经结束，则执行卖出操作
-        (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(trd_ctx, code, log_2_file)
-        # log_2_file.info('plVal_or_None:%s,%s'%(plVal_or_None,type(plVal_or_None)))
-        if iHave:
-            if DEAL_PAUSE:
-                log_2_file.warn('已持仓股票{}，待挂单后程序会自动暂停，请等待。'.format(code))
-            log_2_file.info('已持有股票:{},数量:{},在订单列表中该股票最后一次订单状态[{}]已经结束,准备下单卖出'.format(code, qty_or_None, last_order_status))
-            if plVal_or_None - float(meibi_zhuan) - YJ - YJ > 0:
-                #达到目标利润则以当前价格卖掉，超过止损线则以当前价格卖掉
-                log_2_file.info('该单已盈利{},准备挂单卖出。'.format(plVal_or_None))
-                realTimePrice = real_time_price(quote_ctx, code)
-                log_2_file.info('准备卖出：股票:{code},当前价格:{realTimePrice},交易数量:{qty_or_None},盈亏金额:{plVal_or_None},盈亏比例:{plRatio}'.format(\
-                                code=code, realTimePrice=realTimePrice, qty_or_None=qty_or_None, plVal_or_None=plVal_or_None, plRatio=plRatio
-                                ))
+    global LAST_ORDER_DIREACTION     #:上一次交易方向，0::BUY/1:SELl,str
+    global LAST_ORDER_PRICE          #:上一次交易价格，0.000，float
+    global LAST_ORDER_TIME_IN_PERIOD #:上一次交易时间，time.time
+    global ORDER_COUNT_IN_PERIOD     #:30s周期内交易的次数，int，取值0~15
+
+    if time.time() - LAST_ORDER_TIME_IN_PERIOD <30 and ORDER_COUNT_IN_PERIOD >= 15:
+        #超过频率限制
+        time.sleep(time.time() - LAST_ORDER_TIME_IN_PERIOD)
+        ORDER_COUNT_IN_PERIOD = 0
+        LAST_ORDER_TIME_IN_PERIOD = time.time()
+    else:
+        realTimePrice = real_time_price(quote_ctx, code)
+        log_2_file.info('查询到股票:{}当前价格:{}'.format(code, realTimePrice))
+        if LAST_ORDER_DIREACTION==1:
+            #空仓状态
+            if LAST_ORDER_PRICE==0:
+                #当天第一次买入
+                ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
+                if ret==RET_OK:
+                    LAST_ORDER_DIREACTION = 0
+                    LAST_ORDER_TIME_IN_PERIOD = time.time()
+                    ORDER_COUNT_IN_PERIOD+=1
+                    LAST_ORDER_PRICE=realTimePrice
+                    last_order_id = data['order_id'][0]
+                    log_2_file.info('直接下买单成功，订单号:{}, 买入价格{}，买入数量{}，挂单类型{}.'.format(last_order_id, realTimePrice, qty_or_None, OrderType.NORMAL))
+                else:
+                    log_2_file.error('直接下买单失败，原因{}。'.format(data))
+            elif LAST_ORDER_PRICE!=0:
+                #持续交易中，等待价格下降后买入
+                tmp_price_fudu = 100 * (realTimePrice - LAST_ORDER_PRICE )/realTimePrice
+                if  tmp_price_fudu<0 and abs(tmp_price_fudu)>= xiayici_mairujia:
+                    ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
+                    if ret==RET_OK:
+                        LAST_ORDER_DIREACTION = 0
+                        LAST_ORDER_TIME_IN_PERIOD = time.time()
+                        ORDER_COUNT_IN_PERIOD+=1
+                        LAST_ORDER_PRICE=realTimePrice
+                        last_order_id = data['order_id'][0]
+                        log_2_file.info('下单成功，订单号:{}, 买入价格{}，买入数量{}，挂单类型{}.'.format(last_order_id, realTimePrice, qty_or_None, OrderType.NORMAL))
+                else:
+                    if tmp_price_fudu>0:
+                        log_2_file.info('未持有该股票，前一次卖出价{}，价格{:.4f}已上升,等待买入。'.format(LAST_ORDER_PRICE,realTimePrice))
+                    if tmp_price_fudu<0 and abs(tmp_price_fudu)< xiayici_mairujia:
+                        log_2_file.info('未持有该股票，前一次卖出价{}，价格{:.4f}已下降{:.2f}%,等待买入。'.format(LAST_ORDER_PRICE,realTimePrice,tmp_price_fudu))
+        elif LAST_ORDER_DIREACTION==0:
+            #已持仓，等待价格上升后卖出
+            log_2_file.info('上一次是购买，现在等待机会卖出')
+            tmp_price_fudu_maichu = 100*(realTimePrice - LAST_ORDER_PRICE)/LAST_ORDER_PRICE
+            if tmp_price_fudu_maichu > xiayici_maichujia:
+                log_2_file.info('价格已从{}升高至{}，准备下单卖出。'.format(LAST_ORDER_PRICE,realTimePrice))
                 ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret==RET_OK:
-                    last_order_time = time.time()
+                    LAST_ORDER_DIREACTION = 1
+                    LAST_ORDER_TIME_IN_PERIOD = time.time()
+                    ORDER_COUNT_IN_PERIOD+=1
+                    LAST_ORDER_PRICE=realTimePrice
                     last_order_id = data['order_id'][0]
-                    log_2_file.info('下单成功，订单号:{}, 卖出价格{}，卖出数量{}，挂单类型{}.'.format(last_order_id, realTimePrice, qty_or_None, TrdSide.SELL))
+                    log_2_file.info('下单成功，订单号:{}, 卖出价格{}，卖出数量{}，挂单类型{}.'.format(last_order_id, realTimePrice, qty_or_None, OrderType.NORMAL))
                 else:
-                    print(data)
-                    #lastErrMsg = data['last_err_msg'].item()
-                    log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
-                    #待增加微信通知功能
-            elif  0 >=  0-ZHISUNXIAN and 0-ZHISUNXIAN >= plRatio: #两个参数为负数
-                log_2_file.warn('当前交易单的亏损比例为：{:.1f}%，超过止损线：{}，以当前价格挂单。'.format(plRatio, ZHISUNXIAN))
-                realTimePrice = real_time_price(quote_ctx, code)
-                ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
-                if ret==RET_OK:
-                    last_order_time = time.time()
-                    last_order_id = data['order_id'][0]
-                    log_2_file.info('挂单成功，订单号:{}, 卖价{}，数量{}，挂单类型{}'.format(last_order_id, realTimePrice, qty_or_None, TrdSide.SELL))
-                else:
-                    log_2_file.info('挂单失败,失败原因{}，发送微信通知'.format(data))
+                    log_2_file.info('下单卖出失败，原因：{}。'.format(data))
             else:
-                log_2_file.info('由于没有达到盈利({plVal_or_None}-{meibi_zhuan}-{YJ}-{YJ}={yingli})或止损({plRatio}%)状态，程序未进行下单。'.format(
-                                plVal_or_None = plVal_or_None,
-                                meibi_zhuan = meibi_zhuan,
-                                YJ= YJ,
-                                yingli = plVal_or_None - float(meibi_zhuan) - YJ - YJ,
-                                plRatio = plRatio
-                            ))
-        else:
-            if DEAL_PAUSE:
-                if (ksjy_btn['state'] == DISABLED):
-                    ksjy_btn['state'] =NORMAL 
-                raise Exception('用户暂停了程序交易.....')
-            qty_or_None = now_qty #手工输入的数量
-            log_2_file.info('当前没有持仓该股票{}今天最后的订单状态是{}，方向是{},可以下单购买。'.format(code, last_order_status,last_order_side))
-            realTimePrice = real_time_price(quote_ctx, code)
-            log_2_file.info('准备买入股票:{},当前价格:{},交易数量:{}'.format(code, realTimePrice, qty_or_None))
-            ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
-            if ret == RET_OK:
-                last_order_time = time.time()
-                last_order_id = data['order_id'][0]
-                log_2_file.info('下单成功，订单号:{}, 购买价格{}，购买数量{}，挂单类型{}。'.format(last_order_id, realTimePrice, qty_or_None, TrdSide.BUY))
-            else:
-                # print(data,get_code_list_type(code)[0])#想不起来为什么这么写
-                # lastErrMsg = data['last_err_msg'].item()#想不起来为什么这么写
-                log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
-    else: 
-        #挂单后经过delte_order_time还没有成交，则进行撤单(模拟交易不支持撤单，暂以改单进行)
-        cur_time = time.time()
-        if cur_time - last_order_time >= delte_order_time:
-            log_2_file.info('该股票{}处于挂单中{}超过{}秒，进行改单。'.format(code, last_order_status, delte_order_time))
-            realTimePrice = real_time_price(quote_ctx, code)
-            ret, data = trd_ctx.change_order(last_order_id, realTimePrice, qty_or_None, trd_env=TRD_ENV)
-            if ret == RET_OK:
-                last_order_time = time.time()
-                last_order_id = data['order_id'][0]
-                log_2_file.info('该股票{}改单成功，订单ID{}，订单价格{}。'.format(code, last_order_id, realTimePrice))
-            else:
-                log_2_file.error('该股票{}改单失败，原因是:{}。'.format(code, data))
-        else:
-            log_2_file.info('该股票{}仍处于挂单中需继续等待，挂单状态{}。'.format(code, last_order_status))
+                log_2_file.info('买入价{}，当前价格{}，变化率[{}]未达到预期[{}]。'.format(LAST_ORDER_PRICE, realTimePrice,tmp_price_fudu_maichu,xiayici_maichujia))
 
 def real_time_price(quote_ctx, stock_num):
     '''
@@ -157,7 +136,7 @@ def real_time_price(quote_ctx, stock_num):
     subscribe_obj.query_my_subscription()
     if subscribe_obj.sub_status == NEED_SUBSCRIBE:
         subscribe_obj.subscribe_mystock()
-    if subscribe_obj.sub_status == CAN_NOT_SUBSCRIBE:
+    elif subscribe_obj.sub_status == CAN_NOT_SUBSCRIBE:
         subscribe_obj.unsubscribe_mystock_all()
         subscribe_obj.subscribe_mystock()
     ret, cur_price_df = subscribe_obj.quote_ctx.get_stock_quote(get_code_list_type(stock_num)[0])
@@ -291,24 +270,15 @@ class SubsCribe(object):
                 return ret, err_message
     
 
-def deal(gpdm, gmsl, mbz, zsx, log_2_file):
-    global lock
-    lock.acquire()
-    ksjy_btn['state'] = DISABLED
-    if (tzjy_btn['state'] == DISABLED):
-        tzjy_btn['state'] =NORMAL 
-    global DEAL_PAUSE
-    DEAL_PAUSE = False
+def deal(gpdm, gmsl, xiayici_mairujia, xiayici_maichujia, log_2_file):
     mktInfo = get_mkt(gpdm)
     trd_ctx = mktInfo.get('trd_ctx')(host='127.0.0.1', port=11111)
     quote_ctx = mktInfo.get('quote_ctx')(host='127.0.0.1', port=11111)
     code_str = gpdm
     unlock(trd_ctx)
     try:
-        #start_to_deal(trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
-        main_deal(start_to_deal, 30, 9, trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file)
-        #main(test, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
-        
+        while True:
+            start_to_deal(trd_ctx, quote_ctx, code_str, xiayici_mairujia, xiayici_maichujia, gmsl, log_2_file)
     except Exception as e:
         log_2_file.error('遇到异常[%s]需要关闭客户端连接' % str(e))
         if trd_ctx:
@@ -317,8 +287,6 @@ def deal(gpdm, gmsl, mbz, zsx, log_2_file):
         if quote_ctx:
             quote_ctx.close()
             log_2_file.info('关闭当前查询连接')
-    finally:
-        lock.release()
         
 def stopp():
     tzjy_btn['state'] = DISABLED
@@ -328,7 +296,7 @@ def stopp():
 
 def deal_thread():
     # #gpdm, gmsl, mbz, zsx
-    print(gpdm_entry.get(), gmsl_entry.get(), mbz_entry3.get(),zsx_entry.get(), log_2_file)
+    log_2_file.info('股票代码[{}],交易数量[{}]，降幅比[{}%]，升幅比[{}%]'.format(gpdm_entry.get(), gmsl_entry.get(), mbz_entry3.get(),zsx_entry.get()))
     th=threading.Thread(target=deal, args=(gpdm_entry.get(), int(gmsl_entry.get()), float(mbz_entry3.get()),float(zsx_entry.get()), log_2_file))        
     th.setDaemon(True)    
     th.start()    
@@ -372,18 +340,18 @@ if __name__ == "__main__":
     gmsl.grid(row=0, column=2, sticky=E+N+S+W)
     gmsl_entry = Entry(root)
     gmsl_entry.grid(row=0, column=3)
-    mbz = Label(root, text='  每笔赚:',font=("黑体", 12, "bold"))
+    mbz = Label(root, text='  降幅比:',font=("黑体", 12, "bold"))
     mbz.grid(row =0, column=4, sticky=E+N+S+W)
     mbz_entry3= Entry(root)
     mbz_entry3.grid(row=0, column=5, sticky=E+N+S+W)
-    zsx = Label(root, text='  止损线：',font=("黑体", 12, "bold"))
-    zsx.grid(row =0, column=6, sticky=E+N+S+W)
-    defalut_zsx = StringVar()
-    zsx_entry = Entry(root, textvariable=defalut_zsx, width=5)
-    zsx_entry.grid(row=0, column=7, sticky=E+N+S+W)
-    defalut_zsx.set("2")
+    zsx_bfh1 = Label(root, text='%')
+    zsx_bfh1.grid(row=0, column=6, sticky=E+N+S+W)
+    zsx = Label(root, text='  升高比：',font=("黑体", 12, "bold"))
+    zsx.grid(row =0, column=7, sticky=E+N+S+W)
+    zsx_entry = Entry(root, width=5)
+    zsx_entry.grid(row=0, column=8, sticky=E+N+S+W)
     zsx_bfh = Label(root, text='%')
-    zsx_bfh.grid(row=0, column=8, sticky=E+N+S+W)
+    zsx_bfh.grid(row=0, column=9, sticky=E+N+S+W)
     env = StringVar()
     cmb_env = ttk.Combobox(root, font=("黑体", 12, "bold"), textvariable=env)
     cmb_env['value'] = ('模拟交易','真实交易')
