@@ -107,7 +107,7 @@ def start_to_deal(trd_ctx, quote_ctx, code,xiayici_mairujia, xiayici_maichujia,q
                     if tmp_price_fudu>0:
                         log_2_file.info('未持有该股票，前一次卖出价{}，价格{:.4f}已上升,等待下降后再买入。'.format(LAST_ORDER_PRICE,realTimePrice))
                     if tmp_price_fudu<0 and abs(tmp_price_fudu)< xiayici_mairujia:
-                        log_2_file.info('未持有该股票，前一次卖出价{}，价格{:.4f}已下降{:.2f}%,须价格下降{}%后买入。'.format(LAST_ORDER_PRICE,realTimePrice,tmp_price_fudu)，xiayici_mairujia)
+                        log_2_file.info('未持有该股票，前一次卖出价{}，价格{:.4f}已下降{:.2f}%,须价格下降{}%后买入。'.format(LAST_ORDER_PRICE,realTimePrice,tmp_price_fudu,xiayici_mairujia))
         elif LAST_ORDER_DIREACTION==0:
             #已持仓，等待价格上升后卖出
             log_2_file.info('上一次是购买，现在等待机会卖出')
