@@ -76,6 +76,7 @@ def start_to_deal(trd_ctx, quote_ctx, code,xiayici_mairujia, xiayici_maichujia,q
         LAST_ORDER_TIME_IN_PERIOD = time.time()
     else:
         realTimePrice = real_time_price(quote_ctx, code)
+        #realTimePrice=float( "%.2f" % random.uniform(14.15, 14.25))
         log_2_file.info('查询到股票:{}当前价格:{}'.format(code, realTimePrice))
         if LAST_ORDER_DIREACTION==1:
             #空仓状态
@@ -94,6 +95,7 @@ def start_to_deal(trd_ctx, quote_ctx, code,xiayici_mairujia, xiayici_maichujia,q
             elif LAST_ORDER_PRICE!=0:
                 #持续交易中，空仓时，等待价格下降后买入
                 tmp_price_fudu = 100 * (realTimePrice - LAST_ORDER_PRICE )/realTimePrice
+                log_2_file.info('上次卖出价格是{}，已下跌至{},下跌了{}%'.format(LAST_ORDER_PRICE, realTimePrice,tmp_price_fudu))
                 if  tmp_price_fudu<0 and abs(tmp_price_fudu)>= xiayici_mairujia:
                     ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                     if ret==RET_OK:
@@ -107,7 +109,7 @@ def start_to_deal(trd_ctx, quote_ctx, code,xiayici_mairujia, xiayici_maichujia,q
                     if tmp_price_fudu>0:
                         log_2_file.info('未持有该股票，前一次卖出价{}，价格{:.4f}已上升,等待下降后再买入。'.format(LAST_ORDER_PRICE,realTimePrice))
                     if tmp_price_fudu<0 and abs(tmp_price_fudu)< xiayici_mairujia:
-                        log_2_file.info('未持有该股票，前一次卖出价{}，价格{:.4f}已下降{:.2f}%,须价格下降{}%后买入。'.format(LAST_ORDER_PRICE,realTimePrice,tmp_price_fudu,xiayici_mairujia))
+                        log_2_file.info('未持有该股票，前一次卖出价{}，价格{:.4f}已下降{:.2f}%,须价格下降{}%后买入。'.format(LAST_ORDER_PRICE,realTimePrice,abs(tmp_price_fudu),xiayici_mairujia))
         elif LAST_ORDER_DIREACTION==0:
             #已持仓，等待价格上升后卖出
             log_2_file.info('上一次是购买，现在等待机会卖出')
@@ -125,7 +127,7 @@ def start_to_deal(trd_ctx, quote_ctx, code,xiayici_mairujia, xiayici_maichujia,q
                 else:
                     log_2_file.info('下单卖出失败，原因：{}。'.format(data))
             else:
-                log_2_file.info('买入价{}，当前价格{}，上升幅度[{}%]未达到预期[{}%]。'.format(LAST_ORDER_PRICE, realTimePrice,tmp_price_fudu_maichu,xiayici_maichujia))
+                log_2_file.info('买入价{}，当前价格{}，上升幅度[{:.4f}%]未达到预期[{}%]。'.format(LAST_ORDER_PRICE, realTimePrice,tmp_price_fudu_maichu,xiayici_maichujia))
 
 def real_time_price(quote_ctx, stock_num):
     '''
