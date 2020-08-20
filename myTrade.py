@@ -91,6 +91,8 @@ def start_to_deal(trd_ctx, quote_ctx, code,xiayici_mairujia, xiayici_maichujia,q
                     last_order_id = data['order_id'][0]
                     log_2_file.info('直接下买单成功，订单号:{}, 买入价格{}，买入数量{}，挂单类型{}.'.format(last_order_id, realTimePrice, qty_or_None, OrderType.NORMAL))
                 else:
+                    LAST_ORDER_TIME_IN_PERIOD = time.time()
+                    ORDER_COUNT_IN_PERIOD+=1
                     log_2_file.error('直接下买单失败，原因{}。'.format(data))
             elif LAST_ORDER_PRICE!=0:
                 #持续交易中，空仓时，等待价格下降后买入
@@ -106,6 +108,8 @@ def start_to_deal(trd_ctx, quote_ctx, code,xiayici_mairujia, xiayici_maichujia,q
                         last_order_id = data['order_id'][0]
                         log_2_file.info('下单成功，订单号:{}, 买入价格{}，买入数量{}，挂单类型{}.'.format(last_order_id, realTimePrice, qty_or_None, OrderType.NORMAL))
                 else:
+                    LAST_ORDER_TIME_IN_PERIOD = time.time()
+                    ORDER_COUNT_IN_PERIOD+=1
                     if tmp_price_fudu>0:
                         log_2_file.info('未持有该股票，前一次卖出价{}，价格{:.4f}已上升,等待下降后再买入。'.format(LAST_ORDER_PRICE,realTimePrice))
                     if tmp_price_fudu<0 and abs(tmp_price_fudu)< xiayici_mairujia:
@@ -125,6 +129,8 @@ def start_to_deal(trd_ctx, quote_ctx, code,xiayici_mairujia, xiayici_maichujia,q
                     last_order_id = data['order_id'][0]
                     log_2_file.info('下单成功，订单号:{}, 卖出价格{}，卖出数量{}，挂单类型{}.'.format(last_order_id, realTimePrice, qty_or_None, OrderType.NORMAL))
                 else:
+                    LAST_ORDER_TIME_IN_PERIOD = time.time()
+                    ORDER_COUNT_IN_PERIOD+=1
                     log_2_file.info('下单卖出失败，原因：{}，时间{}-{},交易次数{}。'.format(data,time.time(),LAST_ORDER_TIME_IN_PERIOD,ORDER_COUNT_IN_PERIOD))
             else:
                 log_2_file.info('买入价{}，当前价格{}，上升幅度[{:.4f}%]未达到预期[{}%]。'.format(LAST_ORDER_PRICE, realTimePrice,tmp_price_fudu_maichu,xiayici_maichujia))
