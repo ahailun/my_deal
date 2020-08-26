@@ -43,7 +43,7 @@ delte_order_time = 0.3          #撤单间隔时间
 qty_or_None      = 0            #记录股票数量，撤单用
 #交易
 is_debug = True
-PWD_UNLOCK = '140108'
+PWD_UNLOCK = '******'
 TRD_ENV = TrdEnv.SIMULATE if is_debug else TrdEnv.REAL
 DEAL_PAUSE = False              #暂停交易
 
