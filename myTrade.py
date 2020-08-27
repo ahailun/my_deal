@@ -188,10 +188,21 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
     ret, data = quote_ctx.position_list_query(trd_env=TRD_ENV, refresh_cache=True)
     tmp_stock_dict = {}
     try:
-        for index, row in data.iterrows():
-            tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio']]})
-    except TypeError as e:
+        if ret == RET_OK:
+            for index, row in data.iterrows():
+                tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio']]})
+        else:
+            raise Exception('查询持仓失败:{}，{}'.format(ret, str(data)))
+    except Exception as e:
         if '频率限制' in str(e): #此协议请求太频繁，触发了频率限制，请稍后再试
+            log_2_file.warn('查询股票持仓时遇到频率限制：{},尝试重新查询.'.format(str(e)))
+            time.sleep(2)
+            tmp_stock_dict = {}
+            ret, data = quote_ctx.position_list_query(trd_env=TRD_ENV, refresh_cache=True)
+            for index, row in data.iterrows():
+                tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio']]})
+        else:
+            log_2_file.erro('查询股票持仓接口失败，返回数据：\n{}\n尝试重新查询。'.format(str(e)))
             time.sleep(1)
             tmp_stock_dict = {}
             ret, data = quote_ctx.position_list_query(trd_env=TRD_ENV, refresh_cache=True)
