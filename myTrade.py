@@ -125,7 +125,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
             qty_or_None = now_qty #手工输入的数量
             log_2_file.info('当前没有持仓该股票{}今天最后的订单状态是{}，方向是{},可以下单购买。'.format(code, last_order_status,last_order_side))
             realTimePrice = real_time_price(quote_ctx, code)
-            if float(last_sell_price)==0 or float(last_sell_price)>float(real_time_price):
+            if float(last_sell_price)==0 or float(last_sell_price)>float(realTimePrice):
                 log_2_file.info('准备买入股票:{},当前价格:{},交易数量:{}'.format(code, realTimePrice, qty_or_None))
                 ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret == RET_OK:
