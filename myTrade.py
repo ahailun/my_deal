@@ -143,15 +143,26 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
         #挂单后经过delte_order_time还没有成交，则进行撤单(模拟交易不支持撤单，暂以改单进行)
         cur_time = time.time()
         if cur_time - last_order_time >= delte_order_time:
-            log_2_file.info('该股票{}处于挂单中{}超过{}秒，进行改单。'.format(code, last_order_status, delte_order_time))
-            realTimePrice = real_time_price(quote_ctx, code)
-            ret, data = trd_ctx.change_order(last_order_id, realTimePrice, qty_or_None, trd_env=TRD_ENV)
-            if ret == RET_OK:
-                last_order_time = time.time()
-                last_order_id = data['order_id'][0]
-                log_2_file.info('该股票{}改单成功，订单ID{}，订单价格{}。'.format(code, last_order_id, realTimePrice))
+            if is_debug:
+                log_2_file.info('该股票{}处于挂单中{}超过{}秒，进行改单。'.format(code, last_order_status, delte_order_time))
+                realTimePrice = real_time_price(quote_ctx, code)
+                ret, data = trd_ctx.change_order(last_order_id, realTimePrice, qty_or_None, trd_env=TRD_ENV)
+                if ret == RET_OK:
+                    last_order_time = time.time()
+                    last_order_id = data['order_id'][0]
+                    log_2_file.info('该股票{}改单成功，新订单ID{}，订单价格{}。'.format(code, last_order_id, realTimePrice))
+                else:
+                    log_2_file.error('该股票{}改单失败，原因是:{}。'.format(code, data))
             else:
-                log_2_file.error('该股票{}改单失败，原因是:{}。'.format(code, data))
+                log_2_file.info('该股票{}处于挂单中{}超过{}秒，进行撤单。'.format(code, last_order_status, delte_order_time))
+                #ret, data = trd_ctx.change_order(last_order_id, realTimePrice, qty_or_None, trd_env=TRD_ENV)
+                ret, data = trd_ctx.modify_order(ModifyOrderOp.CANCEL, last_order_id, qty_or_None, 0, trd_env=TRD_ENV)
+                if ret == RET_OK:
+                    last_order_time = time.time()
+                    last_order_id = data['order_id'][0]
+                    log_2_file.info('该股票{}已撤单[{}]，订单价格。'.format(code, last_order_id))
+                else:
+                    log_2_file.error('该股票{}撤单失败，原因是:{}。'.format(code, data))
         else:
             log_2_file.info('该股票{}仍处于挂单中需继续等待，挂单状态{}。'.format(code, last_order_status))
 
