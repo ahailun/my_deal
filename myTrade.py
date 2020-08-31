@@ -280,8 +280,8 @@ class SubsCribe(object):
                     )
                 my_subscribe_list = data.get('sub_list').get('QUOTE')
                 self.writer_handler.info('已订阅列表为{}'.format(my_subscribe_list))
-                if my_subscribe_list and self.stock_code in my_subscribe_list:
-                    self.writer_handler.info('已订阅该股票{}'.format(self.stock_code))
+                if my_subscribe_list and get_code_list_type(self.stock_code)[0] in my_subscribe_list:
+                    self.writer_handler.info('已订阅该股票{},不需要再次订阅。'.format(self.stock_code))
                     self.sub_status = NEED_NOT_SUBSCRIBE
                 else:
                     self.sub_status = NEED_SUBSCRIBE
