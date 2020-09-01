@@ -121,12 +121,15 @@ def myYjNow(trd_ctx, pwd_unlock, stock_num, now_qty, log_2_file, realTimePrice, 
     '''
     cur_mkt = get_mkt(stock_num).get('MKT')
     if 'US' in cur_mkt:          #若当前交易为美股
+        total_cost = now_qty * realTimePrice
         price_ladder = YJ_LADDER.get(cur_mkt, None)
         if US_is_price_package1: #美股套餐一
             yongjin_tmp = now_qty * 0.0049 if now_qty * 0.0049 > 0.99 else 0.99
-            jiaoshoufei_tmp = now_qty * 0.003
             pingtaishiyongfei_tmp = now_qty * 0.005 if now_qty * 0.005 > 1 else 1
-            return yongjin_tmp+jiaoshoufei_tmp+pingtaishiyongfei_tmp
+            jiaoshoufei_tmp = now_qty * 0.003 #交收费
+            zjhgf = max(0.01, 0.0000221*total_cost)#证监会规费,0.0000221*交易金额，最低0.01 美元
+            #交易活动费
+            return yongjin_tmp+jiaoshoufei_tmp+pingtaishiyongfei_tmp+zjhgf
         else:                    #美股阶梯收费
             month_qty = get_cur_month_deal_total(trd_ctx, pwd_unlock, log_2_file)
             price_ladder_price = []
