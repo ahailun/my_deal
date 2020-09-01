@@ -44,7 +44,7 @@ qty_or_None      = 0            #记录股票数量，撤单用
 #交易
 is_debug = True
 PWD_UNLOCK = '******'
-TRD_ENV = TrdEnv.SIMULATE if is_debug else TrdEnv.REAL
+TRD_ENV = TrdEnv.SIMULATE       #默认为模拟环境
 DEAL_PAUSE = False              #暂停交易
 
 def unlock(trd_ctx):
@@ -69,6 +69,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
     global last_sell_price
     global DEAL_PAUSE
     global is_debug
+    global TRD_ENV
     realTimePrice = real_time_price(quote_ctx, code)
     log_2_file.info('查询到股票:{}当前价格:{}'.format(code, realTimePrice))
     YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty, log_2_file, realTimePrice, is_debug)
@@ -197,6 +198,7 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
     获取账户的持仓列表 检查是否持有该股票stock_num
     返回：(param1, param2, param3， param4) -> (str, float, float, int)
     '''
+    global TRD_ENV
     ret, data = quote_ctx.position_list_query(trd_env=TRD_ENV, refresh_cache=True)
     tmp_stock_dict = {}
     try:
@@ -373,12 +375,14 @@ def stop_thread():
 
 def callback(eventObject): 
     global is_debug
+    global TRD_ENV
     if '模拟交易' in env.get():
         is_debug = True
         print('开始模拟交易......')
     if '真实交易' in env.get():
         is_debug = False
         print('开始真实交易......')
+    TRD_ENV = TrdEnv.SIMULATE if is_debug else TrdEnv.REAL
 
 
 
