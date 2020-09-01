@@ -115,7 +115,7 @@ def get_code_list_type(stock_code):
         raise Exception('找不到该股票的市场列表!')
     return code_list
 
-def myYjNow(trd_ctx, pwd_unlock, stock_num, now_qty, log_2_file, realTimePrice):
+def myYjNow(trd_ctx, pwd_unlock, stock_num, now_qty, log_2_file, realTimePrice, is_debug_or_not):
     '''
     计算佣金yj和平台使用费platcost
     '''
@@ -152,10 +152,17 @@ def myYjNow(trd_ctx, pwd_unlock, stock_num, now_qty, log_2_file, realTimePrice):
     if 'HK' in cur_mkt:
         total_cost = now_qty * realTimePrice
         if HK_is_price_package1:
-            yj = 0 if HK_is_price_package1_mianyong else max(3, total_cost * 3 / 10000) #港股佣金0.03%,若免用则为0
+            if is_debug_or_not:
+                yj = max(3, total_cost * 3 / 10000) #模拟交易时佣金一定存在
+            else:
+                yj = 0 if HK_is_price_package1_mianyong else max(3, total_cost * 3 / 10000) #港股佣金0.03%,若免用则为0
+            platcost = 15 #平台使用费
+            jyxt_syf = 0.5 #交易系统使用费
             jiaoshoufei_tmp = min(100, max(2, total_cost * 2 /100000))    #港股交收费0.002%,最低2港元，最高100港元
-            platcost = 15
-            return yj + jiaoshoufei_tmp + platcost
+            yhs = max(1, 0.1 * total_cost / 100)  #印花税
+            jyf = max(0.01, 5 * total_cost / 100000 ) #交易费
+            jyzf = max(0.01, 27 * total_cost / 1000000) #交易征费
+            return yj + platcost + jyxt_syf + jiaoshoufei_tmp + yhs + jyf + jyzf
 
 if __name__ == "__main__":
     myYjNow('trd_ctx', 'pwd_unlock', 'stocknum', 'now_qty', 100)

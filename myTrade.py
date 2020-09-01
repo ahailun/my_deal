@@ -68,9 +68,10 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
     global qty_or_None
     global last_sell_price
     global DEAL_PAUSE
+    global is_debug
     realTimePrice = real_time_price(quote_ctx, code)
     log_2_file.info('查询到股票:{}当前价格:{}'.format(code, realTimePrice))
-    YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty, log_2_file, realTimePrice)
+    YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty, log_2_file, realTimePrice, is_debug)
     last_order_status, last_order_side = get_last_order_status(trd_ctx, code, last_order_id, PWD_UNLOCK, TRD_ENV)
     if last_order_is_over(last_order_status) : 
         #若上一次订单已经结束，则执行卖出操作
