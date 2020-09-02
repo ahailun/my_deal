@@ -339,8 +339,8 @@ def deal(gpdm, gmsl, mbz, zsx, log_2_file):
     try:
         #def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, log_2_file)
         while True:
-            time.sleep(3)
             start_to_deal(trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file)
+            time.sleep(3)
         #main(test, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
         
     except Exception as e:
