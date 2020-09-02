@@ -173,7 +173,7 @@ def real_time_price(quote_ctx, stock_num):
     若持有该股票，则查询该股票实时价格
     返回 406.0 <class 'float'>
     '''
-    subscribe_obj = SubsCribe(quote_ctx, stock_num)
+    subscribe_obj = SubsCribe(quote_ctx, stock_num, writer_handler=log_2_file)
     subscribe_obj.query_my_subscription()
     if subscribe_obj.sub_status == NEED_SUBSCRIBE:
         subscribe_obj.subscribe_mystock()
