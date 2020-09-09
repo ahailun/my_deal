@@ -185,8 +185,11 @@ def real_time_price(quote_ctx, stock_num):
         if len(cur_price_df) == 0:
             log_2_file.error('无法查询到股票{}的实时价格。'.format(stock_num))
             raise Exception('无法查询到股票{}的实时价格。'.format(stock_num))
-        else:
-            return cur_price_df.iloc[0].iat[3].item()
+        else: 
+            tmp_prc = cur_price_df.iloc[0].iat[3].item()
+            findal_price = round(tmp_prc, 2)
+            log_2_file.info('查询到实时价格为{},转换后的价格为{}。'.format(tmp_prc, findal_price))
+            return findal_price
             #return cur_price_df['pl_val'].item()
     else:
         log_2_file.error('查询到股票{code_name}实时价格时发生错误:{errorinfo}。'.format(code_name=stock_num, errorinfo=cur_price_df))
