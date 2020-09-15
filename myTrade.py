@@ -207,7 +207,10 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
     try:
         if ret == RET_OK:
             for index, row in data.iterrows():
-                tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio']]})
+                if float(row['qty']) >= 1:
+                    tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio']]})
+                else:
+                    log_2_file.info('股票{}的持仓为{}，认为没有持有该股票'.format(row['code'], row['qty']))
         else:
             raise Exception('查询持仓失败:{}，{}'.format(ret, str(data)))
     except Exception as e:
@@ -217,14 +220,20 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
             tmp_stock_dict = {}
             ret, data = quote_ctx.position_list_query(trd_env=TRD_ENV, refresh_cache=True)
             for index, row in data.iterrows():
-                tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio']]})
+                if float(row['qty']) >= 1:
+                    tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio']]})
+                else:
+                    log_2_file.info('股票{}的持仓为{}，认为没有持有该股票'.format(row['code'], row['qty']))
         else:
             log_2_file.error('查询股票持仓接口失败，返回数据：\n{}\n尝试重新查询。'.format(str(e)))
             time.sleep(1)
             tmp_stock_dict = {}
             ret, data = quote_ctx.position_list_query(trd_env=TRD_ENV, refresh_cache=True)
             for index, row in data.iterrows():
-                tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio']]})
+                if float(row['qty']) >= 1:
+                    tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio']]})
+                else:
+                    log_2_file.info('股票{}的持仓为{}，认为没有持有该股票'.format(row['code'], row['qty']))
     # print('*'*50)
     # print(time.strftime('%H:%M:%S',time.localtime(time.time()))+' 本账户已持有{n}个股票{tmp_stock_dict}'.format(n=len(data), tmp_stock_dict=str(tmp_stock_dict.keys())))
     # print('*'*50)
