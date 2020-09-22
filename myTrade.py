@@ -129,11 +129,14 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, jr
             if float(jryk) > 0:
                 ret, data=trd_ctx.position_list_query(code=code,refresh_cache=True)
                 if ret == RET_OK:
-                    real_jryk_of_cur_code = data['today_pl_val'][0]
-                    if real_jryk_of_cur_code >= float(jryk):
-                        raise Exception('当前股票盈利({})超过预期，不再进行程序化交易。'.format(real_jryk_of_cur_code))
-                    else:
-                        log_2_file.info('该股票:{}今日盈利为:{},暂未达到预期:{},继续购买。'.format(code, real_jryk_of_cur_code, jryk))
+                    try:
+                        real_jryk_of_cur_code = data['today_pl_val'][0]
+                        if real_jryk_of_cur_code >= float(jryk):
+                            raise Exception('当前股票盈利({})超过预期，不再进行程序化交易。'.format(real_jryk_of_cur_code))
+                        else:
+                            log_2_file.info('该股票:{}今日盈利为:{},暂未达到预期:{},继续购买。'.format(code, real_jryk_of_cur_code, jryk))
+                    except IndexError:
+                        log_2_file.warn('未查询到该股票{}盈亏信息，可能原因是未持有:{}'.format(code, data))
                 else:
                     log_2_file.error('查询今日盈亏失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
             qty_or_None = now_qty #手工输入的数量
