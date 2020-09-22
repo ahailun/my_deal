@@ -448,7 +448,7 @@ if __name__ == "__main__":
     zsx_bfh.grid(row=0, column=8, sticky=E+N+S+W)
     env = StringVar()
     cmb_env = ttk.Combobox(root, font=("黑体", 12, "bold"), textvariable=env)
-    cmb_env['value'] = ('模拟交易','真实交易')
+    cmb_env['value'] = ('真实交易','模拟交易')
     cmb_env.current(0)
     cmb_env.grid(row=1, column=1,)  
     cmb_env.bind("<<ComboboxSelected>>", callback) 
