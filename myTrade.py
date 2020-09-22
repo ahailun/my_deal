@@ -10,7 +10,7 @@ from logger import Logger
 import random
 import ctypes
 from common import is_HK_mkt, is_US_mkt, get_code_list_type, get_last_order_status, get_mkt, \
-                    last_order_is_over,myYjNow
+                    last_order_is_over,myYjNow, is_validation
 
 lock=threading.Lock()
 
@@ -53,7 +53,7 @@ def unlock(trd_ctx):
         return True
     return False
 
-def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, log_2_file):
+def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, jryk, log_2_file):
     '''
     code:HK.00700
     YJ：单程佣金
@@ -62,6 +62,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
     qty_or_None:数量
     plRatio：盈亏比例
     Q:盈亏规则挂单后，突然股价跌破止损线的情况： plRatio > ZHISUNXIAN
+    jryk:今日盈亏数据，若在前台写入内容并且为数字，则进行对应的检查
     '''
     global last_order_id
     global last_order_time
@@ -124,6 +125,17 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, lo
                 if (ksjy_btn['state'] == DISABLED):
                     ksjy_btn['state'] =NORMAL 
                 raise Exception('用户暂停了程序交易.....')
+            #检查今日盈亏是否到达预期
+            if float(jryk) > 0:
+                ret, data=trd_ctx.position_list_query(code=code,refresh_cache=True)
+                if ret == RET_OK:
+                    real_jryk_of_cur_code = data['today_pl_val'][0]
+                    if real_jryk_of_cur_code >= float(jryk):
+                        raise Exception('当前股票盈利({})超过预期，不再进行程序化交易。'.format(real_jryk_of_cur_code))
+                    else:
+                        log_2_file.info('该股票:{}今日盈利为:{},暂未达到预期:{},继续购买。'.format(code, real_jryk_of_cur_code, jryk))
+                else:
+                    log_2_file.error('查询今日盈亏失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
             qty_or_None = now_qty #手工输入的数量
             log_2_file.info('当前没有持仓该股票{}今天最后的订单状态是{}，方向是{},可以下单购买。'.format(code, last_order_status,last_order_side))
             realTimePrice = real_time_price(quote_ctx, code)
@@ -335,7 +347,7 @@ class SubsCribe(object):
                 return ret, err_message
     
 
-def deal(gpdm, gmsl, mbz, zsx, log_2_file):
+def deal(gpdm, gmsl, mbz, zsx, jryk, log_2_file):
     global lock
     lock.acquire()
     ksjy_btn['state'] = DISABLED
@@ -349,9 +361,11 @@ def deal(gpdm, gmsl, mbz, zsx, log_2_file):
     code_str = gpdm
     unlock(trd_ctx)
     try:
+        if not is_validation(jryk):
+            raise Exception('今日盈亏上限只能填写整数或小数！')
         #def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, log_2_file)
         while True:
-            start_to_deal(trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file)
+            start_to_deal(trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, jryk, log_2_file)
             time.sleep(3)
         #main(test, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
         
@@ -375,7 +389,7 @@ def stopp():
 def deal_thread():
     # #gpdm, gmsl, mbz, zsx
     print(gpdm_entry.get(), gmsl_entry.get(), mbz_entry3.get(),zsx_entry.get(), log_2_file)
-    th=threading.Thread(target=deal, args=(gpdm_entry.get(), int(gmsl_entry.get()), float(mbz_entry3.get()),float(zsx_entry.get()), log_2_file))        
+    th=threading.Thread(target=deal, args=(gpdm_entry.get(), int(gmsl_entry.get()), float(mbz_entry3.get()),float(zsx_entry.get()), jryk_entry.get().strip(), log_2_file))        
     th.setDaemon(True)    
     th.start()    
     
@@ -442,6 +456,12 @@ if __name__ == "__main__":
     ksjy_btn.grid(row=1, column=2, ipadx=30)
     tzjy_btn = Button(root, text="暂停交易", state='disable',font=("黑体", 12, "bold"), command=stop_thread)
     tzjy_btn.grid(row=1, column=3, ipadx=30)
+    jryk = Label(root, text='  今日盈亏上限：',font=("黑体", 12, "bold"))
+    jryk.grid(row =1, column=4)
+    defalut_jryk = StringVar()
+    defalut_jryk.set("0")
+    jryk_entry = Entry(root, textvariable=defalut_jryk)
+    jryk_entry.grid(row=1, column=5)
     scrollbar = Scrollbar(root, orient=VERTICAL)
     listbox = Listbox(root, width=100, height=23, yscrollcommand = scrollbar.set)
     listbox.grid(row=2, column=0, columnspan=11, rowspan=15, sticky=E+N+S+W, padx=10, pady=5)

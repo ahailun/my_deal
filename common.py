@@ -78,6 +78,11 @@ def last_order_is_over(order_status):
                             OrderStatus.FAILED, OrderStatus.DISABLED, OrderStatus.DELETED, \
                             None #未查询到状态时，返回为None
                             ]
+def is_validation(num):
+    if isinstance(eval(num), float) or isinstance(eval(num), int):
+        return True
+    else:
+        return False
 
 def is_HK_mkt(num):
     pattern = re.compile(r'\d+')   # 查找数字
