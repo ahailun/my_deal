@@ -44,7 +44,7 @@ qty_or_None      = 0            #记录股票数量，撤单用
 #交易
 is_debug = True
 PWD_UNLOCK = '******'
-TRD_ENV = TrdEnv.SIMULATE       #默认为模拟环境
+TRD_ENV = TrdEnv.REAL           #默认为模拟环境
 DEAL_PAUSE = False              #暂停交易
 
 def unlock(trd_ctx):
