@@ -380,6 +380,7 @@ def deal(gpdm, gmsl, mbz, zsx, jryk, log_2_file):
         if quote_ctx:
             quote_ctx.close()
             log_2_file.info('关闭当前查询连接')
+        ksjy_btn['state'] = NORMAL
     finally:
         lock.release()
         
