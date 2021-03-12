@@ -39,6 +39,7 @@ last_order_id = None
 
 last_order_time  = 0.00000      #记录上一次订单时间
 last_sell_price  = 0.00000      #记录上一次卖出价格
+first_buy_price  = 0.00000      #记录第一次买入价格
 delte_order_time = 0.3          #撤单间隔时间
 qty_or_None      = 0            #记录股票数量，撤单用
 #交易
@@ -68,6 +69,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, jr
     global last_order_time
     global qty_or_None
     global last_sell_price
+    global first_buy_price
     global DEAL_PAUSE
     global is_debug
     global TRD_ENV
@@ -142,22 +144,24 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, jr
             qty_or_None = now_qty #手工输入的数量
             log_2_file.info('当前没有持仓该股票{}今天最后的订单状态是{}，方向是{},可以下单购买。'.format(code, last_order_status,last_order_side))
             realTimePrice = real_time_price(quote_ctx, code)
-            if float(last_sell_price)==0 or float(last_sell_price)>float(realTimePrice):
-                log_2_file.info('准备买入股票:{},当前价格:{},交易数量:{}'.format(code, realTimePrice, qty_or_None))
+            if float(last_sell_price)==0 or float(first_buy_price)>float(realTimePrice):
+                log_2_file.info('准备买入股票:{},首次购买价格:{},当前价格:{},交易数量:{}'.format(code, first_buy_price, realTimePrice, qty_or_None))
                 ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret == RET_OK:
                     last_order_time = time.time()
                     last_order_id = data['order_id'][0]
                     log_2_file.info('下单成功，订单号:{}, 购买价格{}，购买数量{}，挂单类型{}。'.format(last_order_id, realTimePrice, qty_or_None, TrdSide.BUY))
+                    if float(first_buy_price)==0:
+                        first_buy_price = realTimePrice
+                        log_2_file.info('记录首次购买价格:{}。'.format(first_buy_price))
                 else:
                     # print(data,get_code_list_type(code)[0])#想不起来为什么这么写
                     # lastErrMsg = data['last_err_msg'].item()#想不起来为什么这么写
                     log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
             else:
-                log_2_file.info('等待实时价格[{}]低于上次卖出价[{}]后再下买单。'.format(realTimePrice,last_sell_price))
-
+                log_2_file.info('等待实时价格[{}]低于首次买入价[{}]后再购买。'.format(realTimePrice, first_buy_price))
     else: 
-        #挂单后经过delte_order_time还没有成交，则进行撤单(模拟交易不支持撤单，暂以改单进行)
+        #挂单后经过delte_order_time还没有成交，则进行撤单(实盘)/改单(模拟) 模拟交易不支持撤单
         cur_time = time.time()
         if cur_time - last_order_time >= delte_order_time:
             if is_debug:
