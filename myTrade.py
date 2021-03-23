@@ -79,12 +79,17 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, jr
     last_order_status, last_order_side = get_last_order_status(trd_ctx, code, last_order_id, PWD_UNLOCK, TRD_ENV)
     if last_order_is_over(last_order_status) : 
         #若上一次订单已经结束，则执行卖出操作
-        (iHave , plVal_or_None, qty_or_None, plRatio) = i_have_the_stock(trd_ctx, code, log_2_file)
+        (iHave , plVal_or_None, qty_or_None, plRatio, costPrice) = i_have_the_stock(trd_ctx, code, log_2_file)
         # log_2_file.info('plVal_or_None:%s,%s'%(plVal_or_None,type(plVal_or_None)))
         if iHave:
             if DEAL_PAUSE:
                 log_2_file.warn('已持仓股票{}，待挂单后程序会自动暂停，请等待。'.format(code))
             log_2_file.info('已持有股票:{},数量:{},在订单列表中该股票最后一次订单状态[{}]已经结束,准备下单卖出'.format(code, qty_or_None, last_order_status))
+
+            if float(first_buy_price)==0:
+                first_buy_price = costPrice
+                log_2_file.info('记录软件运行时首次购买价格:{}。'.format(first_buy_price))
+
             if plVal_or_None - float(meibi_zhuan) - YJ - YJ > 0:
                 #达到目标利润则以当前价格卖掉，超过止损线则以当前价格卖掉
                 log_2_file.info('该单已盈利{},准备挂单卖出。'.format(plVal_or_None))
@@ -151,9 +156,6 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, jr
                     last_order_time = time.time()
                     last_order_id = data['order_id'][0]
                     log_2_file.info('下单成功，订单号:{}, 购买价格{}，购买数量{}，挂单类型{}。'.format(last_order_id, realTimePrice, qty_or_None, TrdSide.BUY))
-                    if float(first_buy_price)==0:
-                        first_buy_price = realTimePrice
-                        log_2_file.info('记录首次购买价格:{}。'.format(first_buy_price))
                 else:
                     # print(data,get_code_list_type(code)[0])#想不起来为什么这么写
                     # lastErrMsg = data['last_err_msg'].item()#想不起来为什么这么写
@@ -227,7 +229,7 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
         if ret == RET_OK:
             for index, row in data.iterrows():
                 if float(row['qty']) >= 1:
-                    tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio']]})
+                    tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio'],row['cost_price']]})
                 else:
                     log_2_file.info('股票{}的持仓为{}，认为没有持有该股票'.format(row['code'], row['qty']))
         else:
@@ -240,7 +242,7 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
             ret, data = quote_ctx.position_list_query(trd_env=TRD_ENV, refresh_cache=True)
             for index, row in data.iterrows():
                 if float(row['qty']) >= 1:
-                    tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio']]})
+                    tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio'],row['cost_price']]})
                 else:
                     log_2_file.info('股票{}的持仓为{}，认为没有持有该股票'.format(row['code'], row['qty']))
         else:
@@ -250,7 +252,7 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
             ret, data = quote_ctx.position_list_query(trd_env=TRD_ENV, refresh_cache=True)
             for index, row in data.iterrows():
                 if float(row['qty']) >= 1:
-                    tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio']]})
+                    tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio'],row['cost_price']]})
                 else:
                     log_2_file.info('股票{}的持仓为{}，认为没有持有该股票'.format(row['code'], row['qty']))
     # print('*'*50)
@@ -263,10 +265,11 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
     if dst_stock_num in tmp_stock_dict:
         tempinfo = tmp_stock_dict[dst_stock_num]
         log_2_file.info('已持有该股票{dst_stock_num}'.format(dst_stock_num=dst_stock_num))
+        log_2_file.info('成本价是{}'.format(float(tempinfo[3])))
         #return (True, data['pl_val'].item(),  data['qty'].item(), data['pl_ratio'].item())
-        return (True, float(tempinfo[0]),int(tempinfo[1]),float(tempinfo[2]))
+        return (True, float(tempinfo[0]),int(tempinfo[1]),float(tempinfo[2]),float(tempinfo[3]))
     log_2_file.info('未持有该股票:{dst_stock_num}'.format(dst_stock_num=dst_stock_num))
-    return (False, None, None, None)
+    return (False, None, None, None, None)
 
 def main_deal(deal_function, t, n, trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file):
     '''
