@@ -1,7 +1,8 @@
 my_deal
 ----------------------
 ###软件截图
-![主界面](./doc/src/shortcut.png)
+![main](https://github.com/ahailun/my_deal/blob/6ac4058efbe1128b646f584db06af8f9b14742e2/doc/src/shortcut.png)
+
 ###软件状态
 	开发中
 
