@@ -189,6 +189,44 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, jr
         else:
             log_2_file.info('该股票{}仍处于挂单中需继续等待，挂单状态{}。'.format(code, last_order_status))
 
+def get_first_5codes_by_change_rate(quote_ctx, log_2_file, plate_code):
+    #获取港股主板的前五涨跌幅股票，返回list
+    motherboard_list = []
+    ret, data = quote_ctx.get_plate_stock(plate_code,
+                                          sort_field=SortField.CHANGE_RATE,
+                                          ascend=True) 
+    if ret == RET_OK:
+        all_motherboard_list = data['code'].values.tolist() 
+        motherboard_list = all_motherboard_list[:5] if len(all_motherboard_list) > 5 else all_motherboard_list
+    else:
+        log_2_file.error('寻找涨幅前五的数据时发生错误:'+data)
+    return motherboard_list
+
+def get_turnover_from_5codes(quote_ctx, threhold=1000000, plate_code='HK.Motherboard'):
+    #筛选出该板块下成交额大于一百万的股票
+    target_motherboard_list = get_first_5codes_by_change_rate(quote_ctx, log_2_file, plate_code)
+    if not target_motherboard_list:
+        log_2_file.warn('没有找到涨幅前五的股票数据，继续寻找...')
+        return 
+    subscribe_obj = SubsCribe(quote_ctx, stock_num, writer_handler=log_2_file)
+    subscribe_obj.query_my_subscription()
+    if subscribe_obj.sub_status == NEED_SUBSCRIBE:
+        subscribe_obj.subscribe_mystock()
+    if subscribe_obj.sub_status == CAN_NOT_SUBSCRIBE:
+        subscribe_obj.unsubscribe_mystock_all()
+        subscribe_obj.subscribe_mystock()
+    ret, data = subscribe_obj.quote_ctx.get_stock_quote(target_motherboard_list)
+    if ret == RET_OK:
+        code_list = data['code'].values.tolist()
+        turnover_list = data['turnover'].values.tolist()
+        log_2_file('前几名涨幅的股票成交额分别是：' + turnover_list)
+        for index, value in enumerate(turnover_list):
+            if value > threhold:
+                return code_list[index]
+    else:
+        log_2_file.error('寻找成交额时发生错误:'+data)
+        return 
+
 def real_time_price(quote_ctx, stock_num):
     '''
     若持有该股票，则查询该股票实时价格
@@ -356,6 +394,11 @@ class SubsCribe(object):
                 self.writer_handler.error('再次尝试自动订阅{code}仍然失败，原因{fail_reason}。'.format(code=self.stock_code, fail_reason=err_message))
                 return ret, err_message
     
+def get_gpdm(quote_ctx,):
+    #方案一：涨幅前五名且成交额大于指定数值
+    the_code = ''
+    while True:
+        the_code_for_1st_stratergy = get_turnover_from_5codes(quote_ctx)
 
 def deal(gpdm, gmsl, mbz, zsx, jryk, log_2_file):
     global lock
