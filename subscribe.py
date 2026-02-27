@@ -5,6 +5,7 @@ from futu import *
 import sys, time
 from logger import Logger
 
+log_2_file = Logger()
 
 class SubsCribe(object):
     def __init__(self, quote_ctx, stock_code, writer_handler=log_2_file):
