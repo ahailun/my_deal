@@ -123,6 +123,36 @@ def get_code_list_type(stock_code):
         raise Exception('找不到该股票的市场列表!')
     return code_list
 
+def unlock(trd_ctx):
+    ret, data = trd_ctx.unlock_trade(PWD_UNLOCK)
+    if ret==RET_OK:
+        return True
+    return False
+
+def t_n_time_call(fun, t, n, trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file):
+    '''
+    t时间间隔内的最多执行n次func函数
+    '''
+    global cycle_period_start
+    global cycle_period_count
+    while True:
+        cycle_period_now = time.time()
+        if cycle_period_now - cycle_period_start <= int(t):
+            if cycle_period_count < int(n):
+                #deal_function()
+                fun(trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file)
+                #cycle_period_start = time.time()
+                cycle_period_count += 1
+            else:
+                log_2_file.warn('当前{}s内已执行{}次，无法交易需等待下一次交易机会。'.format(t, int(n)+1))
+                time.sleep(30)
+        else:
+            #deal_function()
+            fun(trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file)
+            cycle_period_start = time.time()
+            cycle_period_count = 0
+
+
 def myYjNow(trd_ctx, pwd_unlock, stock_num, now_qty, log_2_file, realTimePrice, is_debug_or_not):
     '''
     计算佣金yj和平台使用费platcost
