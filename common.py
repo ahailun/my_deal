@@ -96,7 +96,7 @@ def is_HK_mkt(num):
         return False
 
 def is_US_mkt(num):
-    pattern = re.compile(r'[A-Za-z.]+')   # 查找数字
+    pattern = re.compile(r'[A-Za-z.]+')   # 查找字母
     result = pattern.findall(num)
     if result:
         return len(num) == len(result[0])
