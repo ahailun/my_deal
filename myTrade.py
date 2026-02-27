@@ -9,8 +9,10 @@ import sys, time
 from logger import Logger
 import random
 import ctypes
+import pandas as pd
+from datetime import datetime, timedelta, date
 from common import is_HK_mkt, is_US_mkt, get_code_list_type, get_last_order_status, get_mkt, \
-                    last_order_is_over,myYjNow, is_validation
+                    last_order_is_over,myYjNow, is_validation, MAX_STOCKS_PER_REQUEST
 
 lock=threading.Lock()
 
@@ -190,42 +192,207 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, jr
             log_2_file.info('该股票{}仍处于挂单中需继续等待，挂单状态{}。'.format(code, last_order_status))
 
 def get_first_5codes_by_change_rate(quote_ctx, log_2_file, plate_code):
-    #获取港股主板的前五涨跌幅股票，返回list
+    """
+    獲取港股指定板塊漲幅前五的股票代碼
+    Args:
+        quote_ctx: 行情上下文
+        log_2_file: 日誌記錄器
+        plate_code: 板塊代碼，如 'HK.Motherboard'
+    Returns:
+        list: 漲幅前五的股票代碼列表
+    """
     motherboard_list = []
     ret, data = quote_ctx.get_plate_stock(plate_code,
                                           sort_field=SortField.CHANGE_RATE,
-                                          ascend=True) 
+                                          ascend=False)  # 改為 False 以獲取漲幅最大
+    
     if ret == RET_OK:
         all_motherboard_list = data['code'].values.tolist() 
         motherboard_list = all_motherboard_list[:5] if len(all_motherboard_list) > 5 else all_motherboard_list
+        log_2_file.info(f'獲取到 {plate_code} 漲幅前五股票: {motherboard_list}')
     else:
-        log_2_file.error('寻找涨幅前五的数据时发生错误:'+data)
+        log_2_file.error(f'尋找漲幅前五的數據時發生錯誤: {data}')
+    
     return motherboard_list
 
-def get_turnover_from_5codes(quote_ctx, threhold=1000000, plate_code='HK.Motherboard'):
-    #筛选出该板块下成交额大于一百万的股票
-    target_motherboard_list = get_first_5codes_by_change_rate(quote_ctx, log_2_file, plate_code)
-    if not target_motherboard_list:
-        log_2_file.warn('没有找到涨幅前五的股票数据，继续寻找...')
-        return 
-    subscribe_obj = SubsCribe(quote_ctx, stock_num, writer_handler=log_2_file)
-    subscribe_obj.query_my_subscription()
-    if subscribe_obj.sub_status == NEED_SUBSCRIBE:
-        subscribe_obj.subscribe_mystock()
-    if subscribe_obj.sub_status == CAN_NOT_SUBSCRIBE:
-        subscribe_obj.unsubscribe_mystock_all()
-        subscribe_obj.subscribe_mystock()
-    ret, data = subscribe_obj.quote_ctx.get_stock_quote(target_motherboard_list)
+
+def get_high_turnover_stocks(quote_ctx, log_2_file, threshold=1000000, plate_code='HK.Motherboard'):
+    """
+    篩選指定板塊中漲幅前五且成交額大於門檻的股票
+    
+    Args:
+        quote_ctx: 行情上下文
+        log_2_file: 日誌記錄器
+        threshold: 成交額門檻（港元）
+        plate_code: 板塊代碼
+    
+    Returns:
+        list: 符合條件的股票代碼列表
+    """
+    # 1. 獲取漲幅前五的股票
+    target_stocks = get_first_5codes_by_change_rate(quote_ctx, log_2_file, plate_code)
+    if not target_stocks:
+        log_2_file.warn('沒有找到漲幅前五的股票數據')
+        return []
+    for stock_num in target_stocks:
+        subscribe_obj = SubsCribe(quote_ctx, stock_num, writer_handler=log_2_file)
+        subscribe_obj.query_my_subscription()
+        if subscribe_obj.sub_status == NEED_SUBSCRIBE:
+            subscribe_obj.subscribe_mystock()
+        if subscribe_obj.sub_status == CAN_NOT_SUBSCRIBE:
+            subscribe_obj.unsubscribe_mystock_all()
+            subscribe_obj.subscribe_mystock()
+    ret, data = subscribe_obj.quote_ctx.get_stock_quote(target_stocks)
     if ret == RET_OK:
-        code_list = data['code'].values.tolist()
-        turnover_list = data['turnover'].values.tolist()
-        log_2_file('前几名涨幅的股票成交额分别是：' + turnover_list)
-        for index, value in enumerate(turnover_list):
-            if value > threhold:
-                return code_list[index]
+        result_codes = []
+        for _, row in data.iterrows():
+            if row['turnover'] > threshold:
+                result_codes.append(row['code'])
+        log_2_file.info(f'成交額大於 {threshold} 的股票: {result_codes}')
+        return result_codes
     else:
-        log_2_file.error('寻找成交额时发生错误:'+data)
-        return 
+        log_2_file.error(f'獲取股票報價時發生錯誤: {data}')
+        return []
+
+
+"""
+富途OpenAPI：查询指定日期港股复牌股票列表，并返回其中交易量最大的股票
+功能：1. 查询复牌股票 2. 按成交量取最大值
+"""
+def get_previous_trading_day_via_api(quote_ctx, target_date_str, market=Market.HK):
+    """（此函数保持不变）"""
+    target_date = datetime.strptime(target_date_str, '%Y-%m-%d')
+    start_date = (target_date - timedelta(days=30)).strftime('%Y-%m-%d')
+    end_date = target_date_str
+
+    ret, trading_days_data = quote_ctx.request_trading_days(
+        market=market,
+        start=start_date,
+        end=end_date
+    )
+    if ret != RET_OK:
+        log_2_file.warn(f"获取交易日历失败: {trading_days_data}")
+        return None
+    day_list = sorted(trading_days_data['trading_day'].tolist())
+    if target_date_str not in day_list:
+        if len(day_list) >= 2:
+            return day_list[-2]
+        else:
+            log_2_file.warn(f"无法找到有效的前一个交易日（数据不足）。")
+            return None
+    else:
+        idx = day_list.index(target_date_str)
+        if idx == 0:
+            log_2_file.warn(f"目标日期是查询范围内的第一个交易日，无前一日数据。")
+            return None
+        return day_list[idx - 1]
+
+def get_market_snapshot_batch(quote_ctx, all_stock_codes, date_str):
+    """（此函数保持不变，分批获取快照）"""
+    all_snapshots = []
+    total_stocks = len(all_stock_codes)
+    
+    for i in range(0, total_stocks, MAX_STOCKS_PER_REQUEST):
+        batch_codes = all_stock_codes[i:i + MAX_STOCKS_PER_REQUEST]
+        log_2_file.info(f"正在获取批次 {i//MAX_STOCKS_PER_REQUEST + 1} (股票 {i+1} 到 {min(i+MAX_STOCKS_PER_REQUEST, total_stocks)})...")
+        
+        ret, snapshot_data = quote_ctx.get_market_snapshot(batch_codes, date_str=date_str)
+        if ret != RET_OK:
+            log_2_file.info(f"批次 {i//MAX_STOCKS_PER_REQUEST + 1} 获取失败: {snapshot_data}")
+            continue
+        
+        all_snapshots.append(snapshot_data)
+    
+    if not all_snapshots:
+        log_2_file.errornfo(f"所有批次请求均失败，无数据返回。")
+        return None
+    
+    merged_df = pd.concat(all_snapshots, ignore_index=True)
+    log_2_file.info(f"快照数据获取完成，共合并 {len(merged_df)} 条记录。")
+    return merged_df
+
+def get_largest_volume_resumed_stock(quote_ctx, target_date_str=None):
+    """
+    主函数：获取港股市场在指定交易日（默认为当天）的复牌股票列表，
+           并从中找出交易量最大的那一支。
+    
+    Returns:
+        dict or None: 交易量最大的复牌股票信息，格式为：
+                      {'code': 'HK.00700', 'name': '腾讯控股', 'volume': 10000000}
+                      如果无复牌股票或查询失败，则返回 None。
+    """
+    try:
+        # Step 0: 确定目标日期
+        if target_date_str is None:
+            today = date.today()
+            target_date_str = today.strftime('%Y-%m-%d')
+            log_2_file.warn(f"未指定日期，默认使用当天：{target_date_str}")
+        else:
+            log_2_file.warn(f"用户指定目标日期：{target_date_str}")
+
+        # Step 1: 获取港股所有正股列表
+        ret, data = quote_ctx.get_stock_basicinfo(Market.HK, SecurityType.STOCK)
+        if ret != RET_OK:
+            log_2_file.error(f"获取股票列表失败: {data}")
+            return None
+        all_stock_codes = data['code'].tolist()
+        log_2_file.info(f"基础股票池数量: {len(all_stock_codes)}")
+        log_2_file.info(f"预计需要拆分为 { (len(all_stock_codes) + MAX_STOCKS_PER_REQUEST - 1) // MAX_STOCKS_PER_REQUEST } 个批次进行请求。")
+
+        # Step 2: 使用API获取前一个交易日
+        prev_date_str = get_previous_trading_day_via_api(quote_ctx, target_date_str)
+        if not prev_date_str:
+            log_2_file.error(f"无法确定前一个交易日，终止查询。")
+            return None
+        log_2_file.info(f"精准日历对比：{target_date_str} (T日) vs {prev_date_str} (T-1日)")
+
+        # Step 3: 分批获取T日（目标日）的市场快照
+        snapshot_t = get_market_snapshot_batch(quote_ctx, all_stock_codes, target_date_str)
+        if snapshot_t is None or snapshot_t.empty:
+            log_2_file.error(f"获取 {target_date_str} 快照失败或无数据。")
+            return None
+
+        # Step 4: 分批获取T-1日（前一个交易日）的市场快照
+        snapshot_t1 = get_market_snapshot_batch(quote_ctx, all_stock_codes, prev_date_str)
+        if snapshot_t1 is None or snapshot_t1.empty:
+            log_2_file.error(f"获取 {prev_date_str} 快照失败或无数据。")
+            return None
+
+        # Step 5: 数据合并与筛选
+        df_t = snapshot_t.set_index('code')[['name', 'security_status', 'volume']].copy()  # 【新增】包含volume
+        df_t1 = snapshot_t1.set_index('code')[['security_status']].copy()
+        df_t1.columns = ['security_status_t1']
+        
+        df_merge = df_t.join(df_t1, how='inner')
+        log_2_file.info(f"可用于状态对比的有效股票数量: {len(df_merge)}")
+
+        # Step 6: 核心筛选逻辑
+        condition_resumed = (df_merge['security_status_t1'] == SecurityStatus.SUSPENDED) & \
+                            (df_merge['security_status'] == SecurityStatus.NORMAL)
+        resumed_stocks_df = df_merge[condition_resumed].reset_index()
+        log_2_file.info(f"{target_date_str} 港股准确【复牌】股票数量: {len(resumed_stocks_df)}")
+        # Step 7: 【新增核心】从复牌股票中找出交易量最大的那一支
+        if resumed_stocks_df.empty:
+            print("ℹ️  今日无复牌股票，无法比较交易量。")
+            return None
+        # 按 volume（成交量）降序排序
+        # 注意：快照中的 volume 字段代表当日累计成交量，单位为股
+        resumed_stocks_df_sorted = resumed_stocks_df.sort_values(by='volume', ascending=False)
+        largest_volume_stock = resumed_stocks_df_sorted.iloc[0]
+        result = {
+            'code': largest_volume_stock['code'],
+            'name': largest_volume_stock['name'],
+            'volume': int(largest_volume_stock['volume'])  # 转换为整数类型
+        }
+        log_2_file.info(f"🏆 交易量最大的复牌股票: {result['code']} {result['name']}, 成交量: {result['volume']:,} 股")
+        return result
+
+    except Exception as e:
+        log_2_file.error(f"💥 程序执行异常: {e}")
+        return None
+    finally:
+        pass
+
 
 def real_time_price(quote_ctx, stock_num):
     '''
@@ -332,11 +499,6 @@ def main_deal(deal_function, t, n, trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl,
             cycle_period_start = time.time()
             cycle_period_count = 0
 
-
-def test():
-    time.sleep(1)
-    log_2_file.info('in test func....')
-
 class SubsCribe(object):
     def __init__(self, quote_ctx, stock_code, writer_handler=log_2_file):
         self.quote_ctx = quote_ctx
@@ -394,11 +556,17 @@ class SubsCribe(object):
                 self.writer_handler.error('再次尝试自动订阅{code}仍然失败，原因{fail_reason}。'.format(code=self.stock_code, fail_reason=err_message))
                 return ret, err_message
     
-def get_gpdm(quote_ctx,):
-    #方案一：涨幅前五名且成交额大于指定数值
-    the_code = ''
-    while True:
-        the_code_for_1st_stratergy = get_turnover_from_5codes(quote_ctx)
+def get_gpdm(quote_ctx, log_2_file):
+    the_code_for_2nd_stratergy = get_largest_volume_resumed_stock() # 使用示例：查询当天（默认）复牌股票中交易量最大的一支
+    if the_code_for_2nd_stratergy:
+        #log_2_file.info(f"交易量最大的复牌股票详情：股票代码: {the_code_for_2nd_stratergy['code']}, 股票名称: {the_code_for_2nd_stratergy['name']},当日成交量: {the_code_for_2nd_stratergy['volume']:,} 股")
+        return the_code_for_2nd_stratergy
+    else:
+        log_2_file.warn(f"未找到符合【复牌】定义的股票,将按照涨幅选股。")
+        while True:
+            the_code_for_1st_stratergy = get_high_turnover_stocks(quote_ctx, log_2_file)   #方案一：涨幅百分比前五名且成交额大于指定数值
+            if the_code_for_1st_stratergy:
+                return the_code_for_1st_stratergy
 
 def deal(gpdm, gmsl, mbz, zsx, jryk, log_2_file):
     global lock
