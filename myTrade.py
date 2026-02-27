@@ -345,55 +345,111 @@ def callback(eventObject):
 
 if __name__ == "__main__":    
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("myappid") 
-    # import sys
-    # gmsl = '100'  #股票数量
-    # mbz = '1'     #每笔赚
-    # zsx = 8       #止损线
+    
     root = Tk()
     root.title('自动化交易助手V2.5')
     root.geometry("1200x500+200+100")
-    root.iconbitmap(r'.\assassin.ico')
-    root.rowconfigure(1, weight=2)
-    root.columnconfigure(10, weight=2)
-    gmsl = Label(root, text='  购买数量(股):',font=("黑体", 12, "bold"))
-    gmsl.grid(row=0, column=2, sticky=E+N+S+W)
-    gmsl_entry = Entry(root)
-    gmsl_entry.grid(row=0, column=3)
-    mbz = Label(root, text='  每笔赚:',font=("黑体", 12, "bold"))
-    mbz.grid(row =0, column=4, sticky=E+N+S+W)
-    mbz_entry3= Entry(root)
-    mbz_entry3.grid(row=0, column=5, sticky=E+N+S+W)
-    zsx = Label(root, text='  止损线：',font=("黑体", 12, "bold"))
-    zsx.grid(row =0, column=6, sticky=E+N+S+W)
+    
+    # 尝试设置窗口图标
+    try:
+        root.iconbitmap(r'.\assassin.ico')
+    except:
+        pass  # 图标文件不存在时静默处理
+    
+    # ==================== 网格权重配置 ====================
+    # 配置行权重
+    for row in range(3):
+        if row == 2:  # 日志行需要扩展
+            root.rowconfigure(row, weight=1)
+        else:
+            root.rowconfigure(row, weight=0, minsize=50)
+    
+    # 配置列权重
+    for col in range(12):
+        root.columnconfigure(col, weight=1 if col in [0, 2, 4, 6, 8, 10] else 0)
+    
+    # ==================== 第0行：交易参数设置 ====================
+    # 购买数量
+    gmsl = Label(root, text='购买数量(股):', font=("黑体", 12, "bold"))
+    gmsl.grid(row=0, column=0, padx=(20, 5), pady=15, sticky=E)
+    
+    gmsl_entry = Entry(root, width=15)
+    gmsl_entry.grid(row=0, column=1, padx=(0, 20), pady=15, sticky=W)
+    
+    # 每笔赚
+    mbz = Label(root, text='每笔赚:', font=("黑体", 12, "bold"))
+    mbz.grid(row=0, column=2, padx=(10, 5), pady=15, sticky=E)
+    
+    mbz_entry = Entry(root, width=15)  # 重命名以保持一致性
+    mbz_entry.grid(row=0, column=3, padx=(0, 20), pady=15, sticky=W)
+    
+    # 止损线
+    zsx = Label(root, text='止损线：', font=("黑体", 12, "bold"))
+    zsx.grid(row=0, column=4, padx=(10, 5), pady=15, sticky=E)
+    
     defalut_zsx = StringVar()
-    zsx_entry = Entry(root, textvariable=defalut_zsx, width=5)
-    zsx_entry.grid(row=0, column=7, sticky=E+N+S+W)
+    zsx_entry = Entry(root, textvariable=defalut_zsx, width=8)
+    zsx_entry.grid(row=0, column=5, padx=(0, 2), pady=15, sticky=W)
     defalut_zsx.set("2")
+    
     zsx_bfh = Label(root, text='%')
-    zsx_bfh.grid(row=0, column=8, sticky=E+N+S+W)
+    zsx_bfh.grid(row=0, column=6, padx=(0, 20), pady=15, sticky=W)
+    
+    # ==================== 第1行：交易控制 ====================
+    # 交易环境选择
     env = StringVar()
-    cmb_env = ttk.Combobox(root, font=("黑体", 12, "bold"), textvariable=env)
-    cmb_env['value'] = ('真实交易','模拟交易')
+    
+    env_label = Label(root, text='交易环境：', font=("黑体", 12, "bold"))
+    env_label.grid(row=1, column=0, padx=(20, 5), pady=15, sticky=E)
+    
+    cmb_env = ttk.Combobox(root, font=("黑体", 12), textvariable=env, width=12)
+    cmb_env['value'] = ('真实交易', '模拟交易')
     cmb_env.current(0)
-    cmb_env.grid(row=1, column=1,)  
-    cmb_env.bind("<<ComboboxSelected>>", callback) 
-    ksjy_btn = Button(root, text="开始交易", font=("黑体", 12, "bold"), command=deal_thread)
-    ksjy_btn.grid(row=1, column=2, ipadx=30)
-    tzjy_btn = Button(root, text="暂停交易", state='disable',font=("黑体", 12, "bold"), command=stop_thread)
-    tzjy_btn.grid(row=1, column=3, ipadx=30)
-    jryk = Label(root, text='  今日盈亏上限：',font=("黑体", 12, "bold"))
-    jryk.grid(row =1, column=4)
+    cmb_env.grid(row=1, column=1, padx=(0, 20), pady=15, sticky=W)
+    cmb_env.bind("<<ComboboxSelected>>", callback)
+    
+    # 开始交易按钮
+    ksjy_btn = Button(root, text="开始交易", font=("黑体", 12, "bold"), 
+                     command=deal_thread, width=12, height=1)
+    ksjy_btn.grid(row=1, column=2, padx=(0, 15), pady=15, ipadx=5)
+    
+    # 暂停交易按钮
+    tzjy_btn = Button(root, text="暂停交易", state='disabled', 
+                     font=("黑体", 12, "bold"), command=stop_thread, width=12, height=1)
+    tzjy_btn.grid(row=1, column=3, padx=(0, 20), pady=15, ipadx=5)
+    
+    # 今日盈亏上限
+    jryk = Label(root, text='今日盈亏上限：', font=("黑体", 12, "bold"))
+    jryk.grid(row=1, column=4, padx=(10, 5), pady=15, sticky=E)
+    
     defalut_jryk = StringVar()
     defalut_jryk.set("0")
-    jryk_entry = Entry(root, textvariable=defalut_jryk)
-    jryk_entry.grid(row=1, column=5)
-    scrollbar = Scrollbar(root, orient=VERTICAL)
-    listbox = Listbox(root, width=100, height=23, yscrollcommand = scrollbar.set)
-    listbox.grid(row=2, column=0, columnspan=11, rowspan=15, sticky=E+N+S+W, padx=10, pady=5)
-    listbox.insert(END, '')
-    scrollbar.grid(row=2, column=11,  rowspan=15, sticky=E+N+S+W, pady=5)
+    jryk_entry = Entry(root, textvariable=defalut_jryk, width=15)
+    jryk_entry.grid(row=1, column=5, padx=(0, 5), pady=15, sticky=W)
+    
+    # ==================== 第2行：日志显示区 ====================
+    # 创建滚动条和列表框的容器框架
+    log_frame = Frame(root, relief=GROOVE, bd=1)
+    log_frame.grid(row=2, column=0, columnspan=11, sticky=E+W+N+S, padx=20, pady=(0, 20))
+    log_frame.columnconfigure(0, weight=1)
+    log_frame.rowconfigure(0, weight=1)
+    
+    # 滚动条
+    scrollbar = Scrollbar(log_frame, orient=VERTICAL)
+    scrollbar.grid(row=0, column=1, sticky=N+S, pady=2)
+    
+    # 列表框
+    listbox = Listbox(log_frame, width=100, height=23, 
+                     font=("Consolas", 10), bg="#f5f5f5",
+                     yscrollcommand=scrollbar.set,
+                     selectbackground="#2196F3", selectforeground="white")
+    listbox.grid(row=0, column=0, sticky=E+W+N+S, padx=(5, 0), pady=5)
+    listbox.insert(END, '系统启动完成，等待用户操作...')
+    
+    # 滚动条配置
     scrollbar.config(command=listbox.yview)
+    
+    # 创建日志记录器
     log_2_file = Logger(listbox=listbox)
     
-
     root.mainloop()
