@@ -266,7 +266,7 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
     log_2_file.info('未持有该股票:{dst_stock_num}'.format(dst_stock_num=dst_stock_num))
     return (False, None, None, None, None)
 
-def pre_deal(gmsl, mbz, zsx, jryk, log_2_file):
+def pre_deal(mbz, zsx, jryk, log_2_file):
     global lock
     lock.acquire()
     ksjy_btn['state'] = DISABLED
@@ -275,8 +275,11 @@ def pre_deal(gmsl, mbz, zsx, jryk, log_2_file):
     global DEAL_PAUSE
     DEAL_PAUSE = False
 
+    from futu import OpenQuoteContext 
+    quote_ctx = OpenQuoteContext(host='127.0.0.1', port=11111)
+
     # 方案二：查询当天复牌股票中交易量最大的一支
-    the_code_for_2nd_stratergy = get_largest_volume_resumed_stock() 
+    the_code_for_2nd_stratergy = get_largest_volume_resumed_stock(quote_ctx) 
     if the_code_for_2nd_stratergy:
         code_str =  the_code_for_2nd_stratergy
     else:
@@ -287,9 +290,9 @@ def pre_deal(gmsl, mbz, zsx, jryk, log_2_file):
             if the_code_for_1st_stratergy:
                 code_str = the_code_for_1st_stratergy[0]
                 break
+            
     mktInfo = get_mkt(code_str)
     trd_ctx = mktInfo.get('trd_ctx')(host='127.0.0.1', port=11111)
-    quote_ctx = mktInfo.get('quote_ctx')(host='127.0.0.1', port=11111)
     
     unlock(trd_ctx)
     try:
@@ -320,8 +323,8 @@ def stopp():
 
 def deal_thread():
     # gmsl, mbz, zsx
-    print(gmsl_entry.get(), mbz_entry3.get(),zsx_entry.get(), log_2_file)
-    th=threading.Thread(target=pre_deal, args=(int(gmsl_entry.get()), float(mbz_entry3.get()),float(zsx_entry.get()), jryk_entry.get().strip(), log_2_file))        
+    print(mbz_entry.get(),zsx_entry.get(), log_2_file)
+    th=threading.Thread(target=pre_deal, args=(float(mbz_entry.get()),float(zsx_entry.get()), jryk_entry.get().strip(), log_2_file))        
     th.setDaemon(True)    
     th.start()    
 
@@ -341,20 +344,36 @@ def callback(eventObject):
         print('开始真实交易......')
     TRD_ENV = TrdEnv.SIMULATE if is_debug else TrdEnv.REAL
 
-
-
 if __name__ == "__main__":    
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("myappid") 
     
     root = Tk()
     root.title('自动化交易助手V2.5')
-    root.geometry("1200x500+200+100")
+    
+    # 设置窗口尺寸
+    window_width = 1200
+    window_height = 500
+    root.geometry(f"{window_width}x{window_height}")
     
     # 尝试设置窗口图标
     try:
         root.iconbitmap(r'.\assassin.ico')
     except:
         pass  # 图标文件不存在时静默处理
+    
+    # 获取屏幕尺寸
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    
+    # 计算窗口位置使其居中
+    x = (screen_width - window_width) // 2
+    y = (screen_height - window_height) // 2
+    
+    # 设置窗口位置
+    root.geometry(f"{window_width}x{window_height}+{x}+{y}")
+    
+    # 设置窗口最小尺寸
+    root.minsize(800, 400)
     
     # ==================== 网格权重配置 ====================
     # 配置行权重
@@ -369,19 +388,14 @@ if __name__ == "__main__":
         root.columnconfigure(col, weight=1 if col in [0, 2, 4, 6, 8, 10] else 0)
     
     # ==================== 第0行：交易参数设置 ====================
-    # 购买数量
-    gmsl = Label(root, text='购买数量(股):', font=("黑体", 12, "bold"))
-    gmsl.grid(row=0, column=0, padx=(20, 5), pady=15, sticky=E)
-    
-    gmsl_entry = Entry(root, width=15)
-    gmsl_entry.grid(row=0, column=1, padx=(0, 20), pady=15, sticky=W)
-    
     # 每笔赚
     mbz = Label(root, text='每笔赚:', font=("黑体", 12, "bold"))
     mbz.grid(row=0, column=2, padx=(10, 5), pady=15, sticky=E)
     
-    mbz_entry = Entry(root, width=15)  # 重命名以保持一致性
+    mbz_default = StringVar()
+    mbz_entry = Entry(root, textvariable=mbz_default, width=15)  # 重命名以保持一致性
     mbz_entry.grid(row=0, column=3, padx=(0, 20), pady=15, sticky=W)
+    mbz_default.set("500")
     
     # 止损线
     zsx = Label(root, text='止损线：', font=("黑体", 12, "bold"))
@@ -423,7 +437,7 @@ if __name__ == "__main__":
     jryk.grid(row=1, column=4, padx=(10, 5), pady=15, sticky=E)
     
     defalut_jryk = StringVar()
-    defalut_jryk.set("0")
+    defalut_jryk.set("2")  # 修改默认值为2
     jryk_entry = Entry(root, textvariable=defalut_jryk, width=15)
     jryk_entry.grid(row=1, column=5, padx=(0, 5), pady=15, sticky=W)
     
