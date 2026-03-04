@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, date
 from subscribe import SubsCribe
 from futu import *
 from logger import Logger
-from common import MAX_STOCKS_PER_REQUEST
+from common import MAX_STOCKS_PER_REQUEST, NEED_SUBSCRIBE, CAN_NOT_SUBSCRIBE, NEED_NOT_SUBSCRIBE
 
 log_2_file = Logger()
 

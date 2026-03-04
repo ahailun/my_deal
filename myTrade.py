@@ -12,28 +12,16 @@ from subscribe import SubsCribe
 from stratergy.stratergy2 import get_largest_volume_resumed_stock
 from stratergy.stratergy1 import get_high_turnover_stocks
 from common import is_HK_mkt, is_US_mkt, get_code_list_type, get_last_order_status, get_mkt, \
-                    last_order_is_over, unlock, myYjNow, is_validation, MAX_STOCKS_PER_REQUEST
+                    last_order_is_over, unlock, myYjNow, is_validation, MAX_STOCKS_PER_REQUEST, \
+                    PWD_UNLOCK, NEED_SUBSCRIBE, CAN_NOT_SUBSCRIBE, NEED_NOT_SUBSCRIBE
 
 lock=threading.Lock()
 
 log_2_file = Logger()
 
-#订阅数量要求，每个订阅类型占用一个额度，我名下额度默认为300
-#两次订阅/反订阅间隔60s,初始值设置为0s
-stard_subscrip_num_level = '500'
-time_between_two_subscribe = 60
-subscriptime = 0
-
 #下单限制：30s内最多访问15次，且1s内最多5次
 cycle_period_count = 0
 cycle_period_start = time.time()
-
- #0, 订阅额度还有空余
- #1，订阅额度已无空余
- #2，已订阅过，无须再次订阅
-NEED_SUBSCRIBE = 0        
-CAN_NOT_SUBSCRIBE = 1   
-NEED_NOT_SUBSCRIBE = 2
 
 #根据上一次的订单号查询状态
 last_order_id = None
@@ -43,22 +31,22 @@ last_sell_price  = 0.00000      #记录上一次卖出价格
 first_buy_price  = 0.00000      #记录第一次买入价格
 delte_order_time = 0.3          #撤单间隔时间
 qty_or_None      = 0            #记录股票数量，撤单用
+
 #交易
 is_debug = True
-PWD_UNLOCK = '******'
 TRD_ENV = TrdEnv.REAL           #默认为模拟环境
 DEAL_PAUSE = False              #暂停交易
 
 
-def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, jryk, log_2_file):
+def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log_2_file):
     '''
     code:HK.00700
     YJ：单程佣金
-    ZHISUNXIAN:取整，例如10意为10%
+    zhi_sun_xian:取整，例如10意为10%
     plVal_or_None:盈亏金额
     qty_or_None:数量
     plRatio：盈亏比例
-    Q:盈亏规则挂单后，突然股价跌破止损线的情况： plRatio > ZHISUNXIAN
+    Q:盈亏规则挂单后，突然股价跌破止损线的情况： plRatio > zhi_sun_xian
     jryk:今日盈亏数据，若在前台写入内容并且为数字，则进行对应的检查
     '''
     global last_order_id
@@ -104,8 +92,8 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, ZHISUNXIAN, now_qty, jr
                     #lastErrMsg = data['last_err_msg'].item()
                     log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
                     #待增加微信通知功能
-            elif  0 >=  0-ZHISUNXIAN and 0-ZHISUNXIAN >= plRatio: #两个参数为负数
-                log_2_file.warn('当前交易单的亏损比例为：{:.1f}%，超过止损线：{}，以当前价格挂单。'.format(plRatio, ZHISUNXIAN))
+            elif  0 >=  0-zhi_sun_xian and 0-zhi_sun_xian >= plRatio: #两个参数为负数
+                log_2_file.warn('当前交易单的亏损比例为：{:.1f}%，超过止损线：{}，以当前价格挂单。'.format(plRatio, zhi_sun_xian))
                 realTimePrice = real_time_price(quote_ctx, code)
                 ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret==RET_OK:
@@ -288,7 +276,8 @@ def pre_deal(mbz, zsx, jryk, log_2_file):
             #方案一：涨幅百分比前五名且成交额大于指定数值
             the_code_for_1st_stratergy = get_high_turnover_stocks(quote_ctx, log_2_file)   
             if the_code_for_1st_stratergy:
-                code_str = the_code_for_1st_stratergy[0]
+                code_str = the_code_for_1st_stratergy[0] # HK.00042
+                code_str = code_str[3:]
                 break
             
     mktInfo = get_mkt(code_str)
@@ -299,10 +288,9 @@ def pre_deal(mbz, zsx, jryk, log_2_file):
         if not is_validation(jryk):
             raise Exception('今日盈亏上限只能填写整数或小数！')
         while True:
-            start_to_deal(trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, jryk, log_2_file)
+            start_to_deal(trd_ctx, quote_ctx, mbz, code_str, zsx, jryk, log_2_file)
             time.sleep(3)
         #main(test, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
-        
     except Exception as e:
         log_2_file.error('遇到异常[%s]需要关闭客户端连接' % str(e))
         if trd_ctx:

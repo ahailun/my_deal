@@ -1,10 +1,20 @@
 import re
 import time
 from logger import Logger
-from futu import OpenUSTradeContext, OpenHKTradeContext, OpenQuoteContext, OrderStatus
+from futu import OpenUSTradeContext, OpenHKTradeContext, OpenQuoteContext, OrderStatus, RET_OK
 
 # 定义全局常量：单次请求最大股票数量
 MAX_STOCKS_PER_REQUEST = 400
+
+ #0, 订阅额度还有空余
+ #1，订阅额度已无空余
+ #2，已订阅过，无须再次订阅
+NEED_SUBSCRIBE = 0        
+CAN_NOT_SUBSCRIBE = 1   
+NEED_NOT_SUBSCRIBE = 2
+
+#交易
+PWD_UNLOCK = '799246'
 
 #美/港股
 # US_STOCK = {'MKT':'US', 'trd_ctx':OpenUSTradeContext(host='127.0.0.1', port=11111),'quote_ctx':OpenQuoteContext(host='127.0.0.1', port=11111), 'LASTTIME_BUY_PRIC':'cost_price'}
@@ -91,7 +101,7 @@ def is_HK_mkt(num):
     pattern = re.compile(r'\d+')   # 查找数字
     result = pattern.findall(num)
     if result:
-        return len(num) == len(result[0])
+        return 5 == len(result[0]) or len(num) == len(result[0]) # 港股股票只有五位数字
     else:
         return False
 
@@ -115,9 +125,11 @@ def get_mkt(code_num):
 
 def get_code_list_type(stock_code):
     if is_HK_mkt(stock_code):
-        code_list = ['HK.%s' % stock_code]
+        #code_list = ['HK.%s' % stock_code]
+        code_list = ['%s' % stock_code]
     elif is_US_mkt(stock_code):
-        code_list = ['US.%s' % stock_code]
+        #code_list = ['US.%s' % stock_code]
+        code_list = ['%s' % stock_code]
     else:
         code_list = []  #其他市场类型的股票暂不支持
         raise Exception('找不到该股票的市场列表!')

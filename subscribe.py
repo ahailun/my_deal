@@ -4,8 +4,17 @@
 from futu import *
 import sys, time
 from logger import Logger
+from common import NEED_SUBSCRIBE, CAN_NOT_SUBSCRIBE, NEED_NOT_SUBSCRIBE, \
+                   get_code_list_type
 
 log_2_file = Logger()
+
+#订阅数量要求，每个订阅类型占用一个额度，我名下额度默认为300
+#两次订阅/反订阅间隔60s,初始值设置为0s
+stard_subscrip_num_level = '500'
+time_between_two_subscribe = 60
+subscriptime = 0
+
 
 class SubsCribe(object):
     def __init__(self, quote_ctx, stock_code, writer_handler=log_2_file):
