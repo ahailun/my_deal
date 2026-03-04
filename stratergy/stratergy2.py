@@ -1,6 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
+import sys
+sys.path.append('..')
+
 import pandas as pd
 from datetime import datetime, timedelta, date
 from subscribe import SubsCribe
@@ -146,3 +149,16 @@ def get_largest_volume_resumed_stock(quote_ctx, target_date_str=None):
         return None
     finally:
         pass
+
+if __name__ == '__main__':
+    # 使用示例：查询当天（默认）复牌股票中交易量最大的一支
+    quote_ctx = OpenQuoteContext(host='127.0.0.1', port=11111)
+    largest_stock = get_largest_volume_resumed_stock(quote_ctx)
+    
+    if largest_stock:
+        print(f"\n📈 交易量最大的复牌股票详情：")
+        print(f"股票代码: {largest_stock['code']}")
+        print(f"股票名称: {largest_stock['name']}")
+        print(f"当日成交量: {largest_stock['volume']:,} 股")
+    else:
+        print("⚠️  未找到复牌股票，或查询失败。")
