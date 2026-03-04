@@ -325,7 +325,7 @@ def deal_thread():
     # gmsl, mbz, zsx
     print(mbz_entry.get(),zsx_entry.get(), log_2_file)
     th=threading.Thread(target=pre_deal, args=(float(mbz_entry.get()),float(zsx_entry.get()), jryk_entry.get().strip(), log_2_file))        
-    th.setDaemon(True)    
+    th.daemon = True  
     th.start()    
 
 def stop_thread():
