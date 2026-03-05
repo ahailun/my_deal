@@ -125,9 +125,9 @@ def get_mkt(code_num):
 
 def get_code_list_type(stock_code):
     if is_HK_mkt(stock_code):
-        code_list = ['HK.%s' % stock_code]
+        code_list = ['HK.%s' % stock_code if 'HK' not in stock_code else stock_code]
     elif is_US_mkt(stock_code):
-        code_list = ['US.%s' % stock_code]
+        code_list = ['US.%s' % stock_code if 'US' not in stock_code else stock_code]
     else:
         code_list = []  #其他市场类型的股票暂不支持
         raise Exception('找不到该股票的市场列表!')

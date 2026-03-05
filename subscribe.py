@@ -60,6 +60,8 @@ class SubsCribe(object):
         try_sub_count = 0
         self.writer_handler.info('开始订阅{code}。'.format(code=self.stock_code))
         while True:
+            xx = get_code_list_type(self.stock_code)
+            print(xx)
             (ret, err_message) = self.quote_ctx.subscribe(get_code_list_type(self.stock_code), [SubType.QUOTE])
             subscriptime = time.time()
             if ret == RET_OK:
@@ -73,3 +75,9 @@ class SubsCribe(object):
                 self.writer_handler.error('再次尝试自动订阅{code}仍然失败，原因{fail_reason}。'.format(code=self.stock_code, fail_reason=err_message))
                 return ret, err_message
     
+if __name__ == '__main__':
+    quote_ctx = OpenQuoteContext(host='127.0.0.1', port=11111)
+    stock_num = 'US.AAPL'
+    subscribe_obj = SubsCribe(quote_ctx, stock_num, writer_handler=log_2_file)
+    subscribe_obj.subscribe_mystock()
+    quote_ctx.close()
