@@ -60,8 +60,6 @@ class SubsCribe(object):
         try_sub_count = 0
         self.writer_handler.info('开始订阅{code}。'.format(code=self.stock_code))
         while True:
-            xx = get_code_list_type(self.stock_code)
-            print(xx)
             (ret, err_message) = self.quote_ctx.subscribe(get_code_list_type(self.stock_code), [SubType.QUOTE])
             subscriptime = time.time()
             if ret == RET_OK:

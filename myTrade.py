@@ -82,13 +82,13 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
                                 code=code, realTimePrice=realTimePrice, qty_or_None=qty_or_None, plVal_or_None=plVal_or_None, plRatio=plRatio
                                 ))
                 ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
-                if ret==RET_OK:
+                if ret == RET_OK:
                     last_order_time = time.time()
                     last_order_id = data['order_id'][0]
                     last_sell_price = realTimePrice
                     log_2_file.info('下单成功，订单号:{}, 卖出价格{}，卖出数量{}，挂单类型{}.'.format(last_order_id, realTimePrice, qty_or_None, TrdSide.SELL))
                 else:
-                    print(data)
+                    print("下单失败"+data)
                     #lastErrMsg = data['last_err_msg'].item()
                     log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
                     #待增加微信通知功能
@@ -191,7 +191,8 @@ def real_time_price(quote_ctx, stock_num):
             log_2_file.error('无法查询到股票{}的实时价格。'.format(stock_num))
             raise Exception('无法查询到股票{}的实时价格。'.format(stock_num))
         else: 
-            tmp_prc = cur_price_df.iloc[0].iat[3].item()
+            tmp_prc = cur_price_df.iloc[0].iat[3]
+            print('dddfsafasdf:'+tmp_prc)
             findal_price = round(tmp_prc, 2)
             log_2_file.info('查询到实时价格为{},转换后的价格为{}。'.format(tmp_prc, findal_price))
             return findal_price
@@ -238,9 +239,7 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
                     tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio'],row['cost_price']]})
                 else:
                     log_2_file.info('股票{}的持仓为{}，认为没有持有该股票'.format(row['code'], row['qty']))
-    # print('*'*50)
     # print(time.strftime('%H:%M:%S',time.localtime(time.time()))+' 本账户已持有{n}个股票{tmp_stock_dict}'.format(n=len(data), tmp_stock_dict=str(tmp_stock_dict.keys())))
-    # print('*'*50)
     log_2_file.warn('本账户已持有{n}个股票{tmp_stock_dict}'.format(n=len(tmp_stock_dict), tmp_stock_dict=str(list(tmp_stock_dict.keys()))))
     
     dst_stock_num = get_code_list_type(stock_num)[0]
