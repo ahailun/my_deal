@@ -295,7 +295,7 @@ def get_largest_volume_resumed_stock(quote_ctx, target_date_str=None):
             'volume': int(largest_volume_stock['volume'])  # 转换为整数类型
         }
         log_2_file.info(f"交易量最大的复牌股票: {result['code']} {result['name']}, 成交量: {result['volume']:,} 股")
-        return result
+        return result['code']
     except Exception as e:
         log_2_file.error(f"程序执行异常: {e}")
         import traceback

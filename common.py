@@ -1,7 +1,7 @@
 import re
 import time
 from logger import Logger
-from futu import OpenUSTradeContext, OpenHKTradeContext, OpenQuoteContext, OrderStatus, RET_OK
+from futu import OpenUSTradeContext, OpenHKTradeContext, OpenQuoteContext, OrderStatus, RET_OK, OrderType
 
 # 定义全局常量：单次请求最大股票数量
 MAX_STOCKS_PER_REQUEST = 400
@@ -78,9 +78,9 @@ def get_last_order_status(trd_ctx, code, orderid, pwd_unlock, TRD_ENV):
                 raise Exception(data)
             for index, row in data.iterrows():
                 if index==0:
-                    return row['order_status'], row['trd_side']
+                    return row['order_status'], row['trd_side'], row["order_id"]
         else:
-            return None, None
+            return None, None, None
     else:
         raise Exception(data)
 
@@ -138,6 +138,14 @@ def unlock(trd_ctx):
     if ret==RET_OK:
         return True
     return False
+
+def get_dynamic_qty(trd_ctx, code, price, trade_env):
+    ret, data = trd_ctx.acctradinginfo_query(order_type=OrderType.NORMAL, code=code, price=price, trd_env=trade_env)
+    if ret == RET_OK:
+        return data['max_cash_buy'][0]  # 现金可买
+    else:
+        return 0
+
 
 def t_n_time_call(fun, t, n, trd_ctx, quote_ctx, mbz, code_str, zsx, gmsl, log_2_file):
     '''

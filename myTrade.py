@@ -13,7 +13,7 @@ from stratergy.stratergy2 import get_largest_volume_resumed_stock
 from stratergy.stratergy1 import get_high_turnover_stocks
 from common import is_HK_mkt, is_US_mkt, get_code_list_type, get_last_order_status, get_mkt, \
                     last_order_is_over, unlock, myYjNow, is_validation, MAX_STOCKS_PER_REQUEST, \
-                    PWD_UNLOCK, NEED_SUBSCRIBE, CAN_NOT_SUBSCRIBE, NEED_NOT_SUBSCRIBE
+                    PWD_UNLOCK, NEED_SUBSCRIBE, CAN_NOT_SUBSCRIBE, NEED_NOT_SUBSCRIBE, get_dynamic_qty
 
 lock=threading.Lock()
 
@@ -59,13 +59,16 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
     global TRD_ENV
     realTimePrice = real_time_price(quote_ctx, code)
     log_2_file.info('查询到股票:{}当前价格:{}'.format(code, realTimePrice))
+    now_qty = get_dynamic_qty(trd_ctx, code, realTimePrice, TRD_ENV)
     YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty, log_2_file, realTimePrice, is_debug)
-    last_order_status, last_order_side = get_last_order_status(trd_ctx, code, last_order_id, PWD_UNLOCK, TRD_ENV)
-    if last_order_is_over(last_order_status) : 
+    last_order_status, last_order_side, last_order_id = get_last_order_status(trd_ctx, code, last_order_id, PWD_UNLOCK, TRD_ENV)
+    if last_order_is_over(last_order_status) :
+        print("last_order_status") 
         #若上一次订单已经结束，则执行卖出操作
         (iHave , plVal_or_None, qty_or_None, plRatio, costPrice) = i_have_the_stock(trd_ctx, code, log_2_file)
         # log_2_file.info('plVal_or_None:%s,%s'%(plVal_or_None,type(plVal_or_None)))
         if iHave:
+            print("i have...")
             if DEAL_PAUSE:
                 log_2_file.warn('已持仓股票{}，待挂单后程序会自动暂停，请等待。'.format(code))
             log_2_file.info('已持有股票:{},数量:{},在订单列表中该股票最后一次订单状态[{}]已经结束,准备下单卖出'.format(code, qty_or_None, last_order_status))
@@ -112,6 +115,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
                                 plRatio = plRatio
                             ))
         else:
+            print("i have..no.")
             if DEAL_PAUSE:
                 if (ksjy_btn['state'] == DISABLED):
                     ksjy_btn['state'] =NORMAL 
@@ -119,7 +123,9 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
             #检查今日盈亏是否到达预期
             if float(jryk) > 0:
                 ret, data=trd_ctx.position_list_query(code=code,refresh_cache=True)
-                if ret == RET_OK:
+                if ret == RET_OK and data.shape[0] > 0:
+                    print("i have..no1.")
+                    print(data)
                     try:
                         real_jryk_of_cur_code = data['today_pl_val'][0]
                         if real_jryk_of_cur_code >= float(jryk):
@@ -130,7 +136,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
                         log_2_file.warn('未查询到该股票{}盈亏信息，可能原因是未持有:{}'.format(code, data))
                 else:
                     log_2_file.error('查询今日盈亏失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
-            qty_or_None = now_qty #手工输入的数量
+            qty_or_None = now_qty #自动计算可以交易的数量
             log_2_file.info('当前没有持仓该股票{}今天最后的订单状态是{}，方向是{},可以下单购买。'.format(code, last_order_status,last_order_side))
             realTimePrice = real_time_price(quote_ctx, code)
             if float(last_sell_price)==0 or float(first_buy_price)>float(realTimePrice):
@@ -151,7 +157,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
         cur_time = time.time()
         if cur_time - last_order_time >= delte_order_time:
             if is_debug:
-                log_2_file.info('该股票{}处于挂单中{}超过{}秒，进行改单。'.format(code, last_order_status, delte_order_time))
+                log_2_file.info('该股票{}处于挂单中[{}-{}]超过{}秒，进行改单。'.format(code, last_order_status,last_order_id, delte_order_time))
                 realTimePrice = real_time_price(quote_ctx, code)
                 ret, data = trd_ctx.change_order(last_order_id, realTimePrice, qty_or_None, trd_env=TRD_ENV)
                 if ret == RET_OK:
@@ -186,16 +192,17 @@ def real_time_price(quote_ctx, stock_num):
         subscribe_obj.unsubscribe_mystock_all()
         subscribe_obj.subscribe_mystock()
     ret, cur_price_df = subscribe_obj.quote_ctx.get_stock_quote(get_code_list_type(stock_num)[0])
+
     if ret == RET_OK:
         if len(cur_price_df) == 0:
             log_2_file.error('无法查询到股票{}的实时价格。'.format(stock_num))
             raise Exception('无法查询到股票{}的实时价格。'.format(stock_num))
         else: 
-            tmp_prc = cur_price_df.iloc[0].iat[3]
-            print('dddfsafasdf:'+tmp_prc)
-            findal_price = round(tmp_prc, 2)
-            log_2_file.info('查询到实时价格为{},转换后的价格为{}。'.format(tmp_prc, findal_price))
-            return findal_price
+            firstCodeInfo = cur_price_df.iloc[0]
+            tmp_prc =float(firstCodeInfo.iat[4])
+            finnal_price = round(tmp_prc, 2) # 小数点后面取两位
+            log_2_file.info('查询到实时价格为{},转换后的价格为{}。'.format(tmp_prc, finnal_price))
+            return finnal_price
             #return cur_price_df['pl_val'].item()
     else:
         log_2_file.error('查询到股票{code_name}实时价格时发生错误:{errorinfo}。'.format(code_name=stock_num, errorinfo=cur_price_df))
@@ -277,8 +284,7 @@ def pre_deal(mbz, zsx, jryk, log_2_file):
             if the_code_for_1st_stratergy:
                 code_str = the_code_for_1st_stratergy[0] # HK.00042
                 code_str = code_str[3:]
-                break
-            
+                break      
     mktInfo = get_mkt(code_str)
     trd_ctx = mktInfo.get('trd_ctx')(host='127.0.0.1', port=11111)
     
