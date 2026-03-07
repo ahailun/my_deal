@@ -284,7 +284,10 @@ def pre_deal(mbz, zsx, jryk, log_2_file):
             if the_code_for_1st_stratergy:
                 code_str = the_code_for_1st_stratergy[0] # HK.00042
                 code_str = code_str[3:]
-                break      
+                break
+            else:
+                time.sleep(3) # 防止频率限制
+                log_2_file.warn(f"持续寻找涨幅前五的股票数据...")
     mktInfo = get_mkt(code_str)
     trd_ctx = mktInfo.get('trd_ctx')(host='127.0.0.1', port=11111)
     
