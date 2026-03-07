@@ -165,7 +165,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
                     last_order_id = data['order_id'][0]
                     log_2_file.info('该股票{}改单成功，新订单ID{}，订单价格{}。'.format(code, last_order_id, realTimePrice))
                 else:
-                    log_2_file.error('该股票{}改单失败，原因是:{}。'.format(code, data))
+                    log_2_file.error('该股票{}改单失败，原因是:{},持续进行中。'.format(code, data))
             else:
                 log_2_file.info('该股票{}处于挂单中{}超过{}秒，进行撤单。'.format(code, last_order_status, delte_order_time))
                 #ret, data = trd_ctx.change_order(last_order_id, realTimePrice, qty_or_None, trd_env=TRD_ENV)
@@ -318,15 +318,13 @@ def stopp():
     DEAL_PAUSE = True
 
 def deal_thread():
-    # gmsl, mbz, zsx
-    print(mbz_entry.get(),zsx_entry.get(), log_2_file)
     th=threading.Thread(target=pre_deal, args=(float(mbz_entry.get()),float(zsx_entry.get()), jryk_entry.get().strip(), log_2_file))        
     th.daemon = True  
     th.start()    
 
 def stop_thread():
     ts=threading.Thread(target=stopp, args=())        
-    ts.setDaemon(True)    
+    ts.daemon = True   
     ts.start() 
 
 def callback(eventObject): 
