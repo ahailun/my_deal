@@ -80,7 +80,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
                 #达到目标利润则以当前价格卖掉，超过止损线则以当前价格卖掉
                 log_2_file.info('该单已盈利{},准备挂单卖出。'.format(plVal_or_None))
                 realTimePrice = real_time_price(quote_ctx, code)
-                log_2_file.info('准备卖出：股票:{code},当前价格:{realTimePrice},交易数量:{qty_or_None},盈亏金额:{plVal_or_None},盈亏比例:{plRatio}'.format(\
+                log_2_file.info('准备卖出股票:{code},当前价格:{realTimePrice},交易数量:{qty_or_None},盈亏金额:{plVal_or_None},盈亏比例:{plRatio}'.format(\
                                 code=code, realTimePrice=realTimePrice, qty_or_None=qty_or_None, plVal_or_None=plVal_or_None, plRatio=plRatio
                                 ))
                 ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
@@ -130,14 +130,14 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
                         else:
                             log_2_file.info('该股票:{}今日盈利为:{},暂未达到预期:{},继续购买。'.format(code, real_jryk_of_cur_code, jryk))
                     else:
-                        log_2_file.warn('未查询到该股票{}盈亏信息，可能原因是未持有:{}'.format(code, data))
+                        log_2_file.warn('未查询到该股票{}盈亏信息，当前未持有.'.format(code))
                 else:
                     log_2_file.error('查询今日盈亏失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
             qty_or_None = now_qty #自动计算可以交易的数量
             
             realTimePrice = real_time_price(quote_ctx, code)
             if float(last_sell_price)==0 or float(first_buy_price)>float(realTimePrice):
-                log_2_file.info('准备买入股票:{},首次购买价格:{},当前价格:{},交易数量:{}'.format(code, first_buy_price, realTimePrice, qty_or_None))
+                log_2_file.info('准备买入股票:{},购买价格:{},当前价格:{},交易数量:{}'.format(code, first_buy_price, realTimePrice, qty_or_None))
                 ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret == RET_OK:
                     last_order_time = time.time()

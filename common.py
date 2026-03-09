@@ -140,7 +140,8 @@ def unlock(trd_ctx):
     return False
 
 def get_dynamic_qty(trd_ctx, code, price, trade_env):
-    ret, data = trd_ctx.acctradinginfo_query(order_type=OrderType.NORMAL, code=code, price=price, trd_env=trade_env)
+    prefix_codename = get_code_list_type(code) # '00700' -> ['HK.00700']
+    ret, data = trd_ctx.acctradinginfo_query(order_type=OrderType.NORMAL, code=prefix_codename[0], price=price, trd_env=trade_env)
     if ret == RET_OK:
         return data['max_cash_buy'][0]  # 现金可买
     else:
