@@ -58,8 +58,9 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
     global is_debug
     global TRD_ENV
     realTimePrice = real_time_price(quote_ctx, code)
-    log_2_file.info('查询到股票:{}当前价格:{}'.format(code, realTimePrice))
     now_qty = get_dynamic_qty(trd_ctx, code, realTimePrice, TRD_ENV)
+    if now_qty == 0:
+        raise Exception(f"账户余额为0，无法交易。")
     YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty, log_2_file, realTimePrice, is_debug)
     last_order_status, last_order_side, last_order_id = get_last_order_status(trd_ctx, code, last_order_id, PWD_UNLOCK, TRD_ENV)
     if last_order_is_over(last_order_status) :
@@ -152,10 +153,11 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
     else: 
         #挂单后经过delte_order_time还没有成交，则进行撤单(实盘)/改单(模拟) 模拟交易不支持撤单
         cur_time = time.time()
+        qty_or_None = now_qty
         if cur_time - last_order_time >= delte_order_time:
             if is_debug:
                 log_2_file.info('该股票{}处于挂单中[{}-{}]超过{}秒，进行改单。'.format(code, last_order_status,last_order_id, delte_order_time))
-                realTimePrice = real_time_price(quote_ctx, code)
+                # realTimePrice = real_time_price(quote_ctx, code) #要不要注释？？
                 ret, data = trd_ctx.change_order(last_order_id, realTimePrice, qty_or_None, trd_env=TRD_ENV)
                 log_2_file.info('修改的数量是：{}，当前环境：{}。'.format(qty_or_None, TRD_ENV))
                 if ret == RET_OK:
