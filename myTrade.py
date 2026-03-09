@@ -382,24 +382,24 @@ if __name__ == "__main__":
     # ==================== 第0行：交易参数设置 ====================
     # 每笔赚
     mbz = Label(root, text='每笔赚:', font=("黑体", 12, "bold"))
-    mbz.grid(row=0, column=2, padx=(10, 5), pady=15, sticky=E)
+    mbz.grid(row=0, column=1, padx=(10, 5), pady=15, sticky=E)
     
     mbz_default = StringVar()
-    mbz_entry = Entry(root, textvariable=mbz_default, width=15)  # 重命名以保持一致性
-    mbz_entry.grid(row=0, column=3, padx=(0, 20), pady=15, sticky=W)
+    mbz_entry = Entry(root, textvariable=mbz_default, width=10)  # 重命名以保持一致性
+    mbz_entry.grid(row=0, column=2, padx=(5, 5), pady=15, sticky=W)
     mbz_default.set("500")
     
     # 止损线
     zsx = Label(root, text='止损线：', font=("黑体", 12, "bold"))
-    zsx.grid(row=0, column=4, padx=(10, 5), pady=15, sticky=E)
+    zsx.grid(row=0, column=2, padx=(20, 5), pady=15, sticky=E)
     
     defalut_zsx = StringVar()
     zsx_entry = Entry(root, textvariable=defalut_zsx, width=8)
-    zsx_entry.grid(row=0, column=5, padx=(0, 2), pady=15, sticky=W)
+    zsx_entry.grid(row=0, column=3, padx=(5, 2), pady=10, sticky=W)
     defalut_zsx.set("2")
     
     zsx_bfh = Label(root, text='%')
-    zsx_bfh.grid(row=0, column=6, padx=(0, 20), pady=15, sticky=W)
+    zsx_bfh.grid(row=0, column=3, padx=(50, 0), pady=15, sticky=W)
     
     # ==================== 第1行：交易控制 ====================
     # 交易环境选择
@@ -426,12 +426,14 @@ if __name__ == "__main__":
     
     # 今日盈亏上限
     jryk = Label(root, text='今日盈亏上限：', font=("黑体", 12, "bold"))
-    jryk.grid(row=1, column=4, padx=(10, 5), pady=15, sticky=E)
+    jryk.grid(row=1, column=4, padx=(5, 2), pady=10, sticky=E)
     
     defalut_jryk = StringVar()
     defalut_jryk.set("2")  # 修改默认值为2
-    jryk_entry = Entry(root, textvariable=defalut_jryk, width=15)
-    jryk_entry.grid(row=1, column=5, padx=(0, 5), pady=15, sticky=W)
+    jryk_entry = Entry(root, textvariable=defalut_jryk, width=5)
+    jryk_entry.grid(row=1, column=5, padx=(0, 5), pady=5, sticky=W)
+    jryk_bfh = Label(root, text='%')
+    jryk_bfh.grid(row=1, column=5, padx=(30, 0), pady=10, sticky=W)
     
     # ==================== 第2行：日志显示区 ====================
     # 创建滚动条和列表框的容器框架
