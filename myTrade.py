@@ -433,6 +433,7 @@ if __name__ == "__main__":
     defalut_jryk = StringVar()
     defalut_jryk.set("2")  # 修改默认值为2
     jryk_entry = Entry(root, textvariable=defalut_jryk, width=5)
+    jryk_entry.config(state='readonly')
     jryk_entry.grid(row=1, column=5, padx=(0, 5), pady=5, sticky=W)
     jryk_bfh = Label(root, text='%')
     jryk_bfh.grid(row=1, column=5, padx=(30, 0), pady=10, sticky=W)
