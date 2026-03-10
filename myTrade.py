@@ -61,6 +61,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
     now_qty = get_dynamic_qty(trd_ctx, code, realTimePrice, TRD_ENV)
     if now_qty == 0:
         raise Exception('{}账户余额为0,无法交易.'.format(TRD_ENV))
+        log_2_file.info('{}账户余额为0,无法交易.'.format(TRD_ENV))
     YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, now_qty, log_2_file, realTimePrice, is_debug)
     last_order_status, last_order_side, last_order_id = get_last_order_status(trd_ctx, code, last_order_id, PWD_UNLOCK, TRD_ENV)
     if last_order_is_over(last_order_status) :
