@@ -151,7 +151,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
         cur_time = time.time()
         if cur_time - last_order_time >= delte_order_time:
             if is_debug:
-                log_2_file.info('该股票{}处于挂单中[{}-{}]超过{}秒，进行改单。'.format(code, last_order_status,last_order_id, delte_order_time))
+                log_2_file.info('该股票{}处于挂单中[{}-{}]超过{}秒，进行改单以快速成交。'.format(code, last_order_status,last_order_id, delte_order_time))
                 realTimePrice = real_time_price(quote_ctx, code) 
                 ret, data = trd_ctx.change_order(last_order_id, realTimePrice, qty_or_None, trd_env=TRD_ENV)
                 log_2_file.info('修改的数量是：{}，当前环境：{}。'.format(qty_or_None, TRD_ENV))
