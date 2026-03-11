@@ -207,7 +207,6 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
     '''
     获取账户的持仓列表 检查是否持有该股票stock_num
     返回：(param1, param2, param3， param4) -> (str, float, float, int)
-    持有数量qty -> 可用数量can_sell_qty
     '''
     global TRD_ENV
     ret, data = quote_ctx.position_list_query(trd_env=TRD_ENV, refresh_cache=True)
@@ -216,7 +215,7 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
         if ret == RET_OK:
             for index, row in data.iterrows():
                 if float(row['qty']) >= 1:
-                    tmp_stock_dict.update({row['code']:[row['pl_val'],row['can_sell_qty'],row['pl_ratio'],row['cost_price']]})
+                    tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio'],row['cost_price']]})
                 else:
                     log_2_file.info('股票{}的持仓为{}，认为没有持有该股票'.format(row['code'], row['qty']))
         else:
