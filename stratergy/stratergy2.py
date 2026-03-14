@@ -18,7 +18,7 @@ log_2_file = Logger()
 富途OpenAPI：查询指定日期港股复牌股票列表，并返回其中交易量最大的股票
 功能：1. 查询复牌股票 2. 按成交量取最大值
 """
-def get_previous_trading_day_via_api(quote_ctx, target_date_str, market=TradeDateMarket.HK):
+def get_previous_trading_day_via_api(quote_ctx, target_date_str, log_2_file, market=TradeDateMarket.HK):
     """
     使用 request_trading_days 接口，精准获取指定日期（T日）的前一个交易日（T-1日）。
     
@@ -129,7 +129,7 @@ def save_snapshot_to_local(snapshot_df, target_date_str=None):
         return False
 
 
-def get_market_snapshot_batch(quote_ctx, all_stock_codes):
+def get_market_snapshot_batch(quote_ctx, log_2_file, all_stock_codes):
     """
     分批获取市场快照数据
     
@@ -196,7 +196,7 @@ def load_snapshot_from_local(date_str):
         return None
 
 
-def get_largest_volume_resumed_stock(quote_ctx, target_date_str=None):
+def get_largest_volume_resumed_stock(quote_ctx, log_2_file, target_date_str=None):
     """
     主函数：获取港股市场在指定交易日（默认为当天）的复牌股票列表，
            并从中找出交易量最大的那一支。
@@ -225,14 +225,14 @@ def get_largest_volume_resumed_stock(quote_ctx, target_date_str=None):
         log_2_file.info(f"预计需要拆分为 { (len(all_stock_codes) + MAX_STOCKS_PER_REQUEST - 1) // MAX_STOCKS_PER_REQUEST } 个批次进行请求。")
 
         # Step 2: 使用API获取前一个交易日
-        prev_date_str = get_previous_trading_day_via_api(quote_ctx, target_date_str)
+        prev_date_str = get_previous_trading_day_via_api(quote_ctx, target_date_str, log_2_file)
         if not prev_date_str:
             log_2_file.error(f"无法确定前一个交易日，终止查询。")
             return None
         log_2_file.info(f"精准日历对比：{target_date_str} (T日) vs {prev_date_str} (T-1日)")
 
         # Step 3: 分批获取T日（目标日）的市场快照
-        snapshot_t = get_market_snapshot_batch(quote_ctx, all_stock_codes)
+        snapshot_t = get_market_snapshot_batch(quote_ctx, log_2_file, all_stock_codes)
         if snapshot_t is None or snapshot_t.empty:
             log_2_file.error(f"获取 {target_date_str} 快照失败或无数据。")
             return None
@@ -310,7 +310,7 @@ if __name__ == '__main__':
     # 注意：这里需要实际的Futu API连接
     try:
         quote_ctx = OpenQuoteContext(host='127.0.0.1', port=11111)
-        largest_stock = get_largest_volume_resumed_stock(quote_ctx)
+        largest_stock = get_largest_volume_resumed_stock(quote_ctx, log_2_file)
         
         if largest_stock:
             print(f"\n📈 交易量最大的复牌股票详情：")

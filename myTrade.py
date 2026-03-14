@@ -218,7 +218,7 @@ def pre_deal(mbz, zsx, log_2_file):
     quote_ctx = OpenQuoteContext(host='127.0.0.1', port=11111)
 
     # 方案二：查询当天复牌股票中交易量最大的一支
-    the_code_for_2nd_stratergy = get_largest_volume_resumed_stock(quote_ctx) 
+    the_code_for_2nd_stratergy = get_largest_volume_resumed_stock(quote_ctx, log_2_file) 
     if the_code_for_2nd_stratergy:
         code_str =  the_code_for_2nd_stratergy
     else:
