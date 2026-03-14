@@ -1,7 +1,8 @@
 import re
 import time
 from logger import Logger
-from futu import OpenUSTradeContext, OpenHKTradeContext, OpenQuoteContext, OrderStatus, RET_OK, OrderType
+from futu import OpenUSTradeContext, OpenHKTradeContext, OpenQuoteContext, OrderStatus, \
+                 RET_OK,OrderType, Currency
 
 # 定义全局常量：单次请求最大股票数量
 MAX_STOCKS_PER_REQUEST = 400
@@ -141,10 +142,23 @@ def unlock(trd_ctx):
 
 def get_dynamic_qty(trd_ctx, code, price, trade_env):
     prefix_codename = get_code_list_type(code) # '00700' -> ['HK.00700']
-    ret, data = trd_ctx.acctradinginfo_query(order_type=OrderType.NORMAL, code=prefix_codename[0], price=price, trd_env=trade_env)
+    ret, data = trd_ctx.acctradinginfo_query(order_type=OrderType.NORMAL, \
+                                             code=prefix_codename[0], \
+                                             price=price, \
+                                             trd_env=trade_env)
     if ret == RET_OK:
         return data['max_cash_buy'][0]  # 现金可买
     else:
+        return 0
+
+def avalible_cash(trd_ctx, trade_env, log_2_file):
+    # refresh_cache=True， 每30秒内最多请求10次查询账户资金接口
+    try:
+        ret, data = trd_ctx.accinfo_query(trd_env=trade_env, refresh_cache=True, currency=Currency.HKD,)
+        if ret == RET_OK:
+            return data['cash'][0]  # 取第一行的购买力,现金可买即‘可用资金’
+    except Exception as e:
+        log_2_file.warn(f'查询账户可用资金时出现异常:'+str(e))
         return 0
 
 

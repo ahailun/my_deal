@@ -13,7 +13,8 @@ from stratergy.stratergy2 import get_largest_volume_resumed_stock
 from stratergy.stratergy1 import get_high_turnover_stocks
 from common import is_HK_mkt, is_US_mkt, get_code_list_type, get_last_order_status, get_mkt, \
                     last_order_is_over, unlock, myYjNow, is_validation, MAX_STOCKS_PER_REQUEST, \
-                    PWD_UNLOCK, NEED_SUBSCRIBE, CAN_NOT_SUBSCRIBE, NEED_NOT_SUBSCRIBE, get_dynamic_qty
+                    PWD_UNLOCK, NEED_SUBSCRIBE, CAN_NOT_SUBSCRIBE, NEED_NOT_SUBSCRIBE, get_dynamic_qty, \
+                    avalible_cash
 
 lock=threading.Lock()
 
@@ -111,13 +112,10 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
         
         realTimePrice = real_time_price(quote_ctx, code)
         now_qty = get_dynamic_qty(trd_ctx, code, realTimePrice, TRD_ENV)
-        #print("----------------------")
-        #print(code)
-        #print(realTimePrice)
-        #print("----------------------")
         if now_qty == 0:
-            log_2_file.info('{}可购买数量为0,无法交易.'.format(TRD_ENV))
-            raise Exception('{}可购买数量为0,无法交易.'.format(TRD_ENV))
+            free_cash = avalible_cash(trd_ctx, TRD_ENV, log_2_file)
+            log_2_file.info('{}可用资金[{}]太少,无法交易该股票[{}].'.format(TRD_ENV, free_cash, code))
+            raise Exception('{}可用资金[{}]太少,无法交易该股票[{}].'.format(TRD_ENV, free_cash, code))
         qty_or_None = now_qty #自动计算可以购买的数量
         log_2_file.info('准备买入股票:{},购买价格:{},当前价格:{},交易数量:{}'.format(code, first_buy_price, realTimePrice, qty_or_None))
         ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
@@ -243,13 +241,12 @@ def pre_deal(mbz, zsx, log_2_file):
             time.sleep(3)
         #main(test, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
     except Exception as e:
-        log_2_file.error('遇到异常[%s]需要关闭客户端连接' % str(e))
+        log_2_file.error('遇到异常[%s].' % str(e))
         if trd_ctx:
             trd_ctx.close()
-            log_2_file.info('关闭当前交易连接')
+            log_2_file.info('关闭交易连接和查询连接')
         if quote_ctx:
             quote_ctx.close()
-            log_2_file.info('关闭当前查询连接')
         ksjy_btn['state'] = NORMAL
     finally:
         lock.release()
