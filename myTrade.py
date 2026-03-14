@@ -38,7 +38,7 @@ TRD_ENV = TrdEnv.REAL           #默认为模拟环境
 DEAL_PAUSE = False              #暂停交易
 
 
-def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log_2_file):
+def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_file):
     '''
     code:HK.00700
     YJ：单程佣金
@@ -47,7 +47,6 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
     qty_or_None:数量
     plRatio：盈亏比例
     Q:盈亏规则挂单后，突然股价跌破止损线的情况： plRatio > zhi_sun_xian
-    jryk:今日盈亏数据，若在前台写入内容并且为数字，则进行对应的检查
     '''
     global last_order_id
     global last_order_time
@@ -109,21 +108,6 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
             if (ksjy_btn['state'] == DISABLED):
                 ksjy_btn['state'] =NORMAL 
             raise Exception('用户暂停了程序交易.....')
-        
-        #检查今日盈亏是否到达预期
-        if float(jryk) > 0:
-            ret, data=trd_ctx.position_list_query(code=code, refresh_cache=True)
-            if ret == RET_OK:
-                if data.shape[0] > 0:
-                    real_jryk_of_cur_code = data['today_pl_val'][0] # today_pl_val,只在真实交易环境下有效!!!
-                    if real_jryk_of_cur_code >= float(jryk):
-                        raise Exception('当前股票盈利({})超过预期，不再进行程序化交易。'.format(real_jryk_of_cur_code))
-                    else:
-                        log_2_file.info('该股票:{}今日盈利为:{},暂未达到预期:{},继续购买。'.format(code, real_jryk_of_cur_code, jryk))
-                else:
-                    log_2_file.warn('未查询到该股票{}盈亏信息，当前未持有.'.format(code))
-            else:
-                log_2_file.error('查询今日盈亏失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
         
         realTimePrice = real_time_price(quote_ctx, code)
         now_qty = get_dynamic_qty(trd_ctx, code, realTimePrice, TRD_ENV)
@@ -212,8 +196,8 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
                     tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio'],row['cost_price']]})
                 else:
                     log_2_file.info('股票{}的持仓为{}，认为没有持有该股票'.format(row['code'], row['qty']))
-    log_2_file.warn('本账户已持有{n}个股票{tmp_stock_dict}'.format(n=len(tmp_stock_dict), tmp_stock_dict=str(list(tmp_stock_dict.keys()))))
     
+    log_2_file.warn('本账户已持有{n}个股票{tmp_stock_dict}'.format(n=len(tmp_stock_dict), tmp_stock_dict=str(list(tmp_stock_dict.keys()))))
     dst_stock_num = get_code_list_type(stock_num)[0]
     if dst_stock_num in tmp_stock_dict:
         tempinfo = tmp_stock_dict[dst_stock_num]
@@ -221,7 +205,7 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
         return (True, float(tempinfo[0]),int(tempinfo[1]),float(tempinfo[2]),float(tempinfo[3])) # 持有
     return (False, None, None, None, None) # 未持有
 
-def pre_deal(mbz, zsx, jryk, log_2_file):
+def pre_deal(mbz, zsx, log_2_file):
     global lock
     lock.acquire()
     ksjy_btn['state'] = DISABLED
@@ -254,10 +238,8 @@ def pre_deal(mbz, zsx, jryk, log_2_file):
     
     unlock(trd_ctx)
     try:
-        if not is_validation(jryk):
-            raise Exception('今日盈亏上限只能填写整数或小数！')
         while True:
-            start_to_deal(trd_ctx, quote_ctx, mbz, code_str, zsx, jryk, log_2_file)
+            start_to_deal(trd_ctx, quote_ctx, mbz, code_str, zsx, log_2_file)
             time.sleep(3)
         #main(test, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
     except Exception as e:
@@ -279,7 +261,7 @@ def stopp():
     DEAL_PAUSE = True
 
 def deal_thread():
-    th=threading.Thread(target=pre_deal, args=(float(mbz_entry.get()),float(zsx_entry.get()), jryk_entry.get().strip(), log_2_file))        
+    th=threading.Thread(target=pre_deal, args=(float(mbz_entry.get()),float(zsx_entry.get()), log_2_file))        
     th.daemon = True  
     th.start()    
 
@@ -386,18 +368,6 @@ if __name__ == "__main__":
     tzjy_btn = Button(root, text="暂停交易", state='disabled', 
                      font=("黑体", 12, "bold"), command=stop_thread, width=12, height=1)
     tzjy_btn.grid(row=1, column=3, padx=(0, 20), pady=15, ipadx=5)
-    
-    # 今日盈亏上限
-    jryk = Label(root, text='今日盈亏上限：', font=("黑体", 12, "bold"))
-    jryk.grid(row=1, column=4, padx=(5, 2), pady=10, sticky=E)
-    
-    defalut_jryk = StringVar()
-    defalut_jryk.set("2")  # 修改默认值为2
-    jryk_entry = Entry(root, textvariable=defalut_jryk, width=5)
-    jryk_entry.config(state='readonly')
-    jryk_entry.grid(row=1, column=5, padx=(0, 5), pady=5, sticky=W)
-    jryk_bfh = Label(root, text='%')
-    jryk_bfh.grid(row=1, column=5, padx=(30, 0), pady=10, sticky=W)
     
     # ==================== 第2行：日志显示区 ====================
     # 创建滚动条和列表框的容器框架
