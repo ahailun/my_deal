@@ -212,19 +212,14 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
                     tmp_stock_dict.update({row['code']:[row['pl_val'],row['qty'],row['pl_ratio'],row['cost_price']]})
                 else:
                     log_2_file.info('股票{}的持仓为{}，认为没有持有该股票'.format(row['code'], row['qty']))
-    # print(time.strftime('%H:%M:%S',time.localtime(time.time()))+' 本账户已持有{n}个股票{tmp_stock_dict}'.format(n=len(data), tmp_stock_dict=str(tmp_stock_dict.keys())))
     log_2_file.warn('本账户已持有{n}个股票{tmp_stock_dict}'.format(n=len(tmp_stock_dict), tmp_stock_dict=str(list(tmp_stock_dict.keys()))))
     
     dst_stock_num = get_code_list_type(stock_num)[0]
-    log_2_file.info('目标股票是{dst_stock_num}'.format(dst_stock_num=dst_stock_num))
     if dst_stock_num in tmp_stock_dict:
         tempinfo = tmp_stock_dict[dst_stock_num]
-        log_2_file.info('已持有该股票{dst_stock_num}'.format(dst_stock_num=dst_stock_num))
-        log_2_file.info('成本价是{}'.format(float(tempinfo[3])))
         #return (True, data['pl_val'].item(),  data['qty'].item(), data['pl_ratio'].item())
-        return (True, float(tempinfo[0]),int(tempinfo[1]),float(tempinfo[2]),float(tempinfo[3]))
-    log_2_file.info('未持有该股票:{dst_stock_num}'.format(dst_stock_num=dst_stock_num))
-    return (False, None, None, None, None)
+        return (True, float(tempinfo[0]),int(tempinfo[1]),float(tempinfo[2]),float(tempinfo[3])) # 持有
+    return (False, None, None, None, None) # 未持有
 
 def pre_deal(mbz, zsx, jryk, log_2_file):
     global lock
