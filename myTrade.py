@@ -140,7 +140,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, jryk, log
         if ret == RET_OK:
             last_order_time = time.time()
             last_order_id = data['order_id'][0]
-            log_2_file.info('下单成功，订单号:{}, 购买价格{}，购买数量{}，挂单类型{}。'.format(last_order_id, realTimePrice, qty_or_None, TrdSide.BUY))
+            log_2_file.info('{}成功，订单号:{}, 购买价格{}，购买数量{}。'.format(TrdSide.BUY, last_order_id, realTimePrice, qty_or_None))
         else:
             # lastErrMsg = data['last_err_msg'].item()#想不起来为什么这么写
             log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
