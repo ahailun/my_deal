@@ -2,7 +2,7 @@ import re
 import time
 from logger import Logger
 from futu import OpenUSTradeContext, OpenHKTradeContext, OpenQuoteContext, OrderStatus, \
-                 RET_OK,OrderType, Currency
+                 RET_OK,OrderType, Currency, TrdSide
 
 # 定义全局常量：单次请求最大股票数量
 MAX_STOCKS_PER_REQUEST = 400
@@ -66,11 +66,11 @@ def get_cur_month_deal_total(trd_ctx, pwd_unlock, log_2_file, start_tm=None, end
         log_2_file.error('请求历史成交数据错误:'+data)
 
 def get_last_order_status(trd_ctx, code, orderid, pwd_unlock, TRD_ENV):
-    # time.sleep(1)
-    if orderid: #下单后等待1s再查询订单状态
-        ret, data = trd_ctx.order_list_query(order_id=orderid, trd_env=TRD_ENV)
+    # time.sleep(1) # 下单后等待1s再查询订单状态
+    if orderid: 
+        ret, data = trd_ctx.order_list_query(order_id=orderid, trd_env=TRD_ENV, refresh_cache=True)
     else:
-        start_tm = time.strftime("2020-03-01 00:00:00",time.localtime()) #目的是尽量包含所有该支股票的信息
+        start_tm = time.strftime("2026-03-01 00:00:00",time.localtime()) #目的是尽量包含所有该支股票的信息
         end_tm = time.strftime("%Y-%m-%d %X",time.localtime())
         ret, data = trd_ctx.order_list_query(code=code, trd_env=TRD_ENV, start=start_tm, end=end_tm)
     if ret == 0:
@@ -85,13 +85,19 @@ def get_last_order_status(trd_ctx, code, orderid, pwd_unlock, TRD_ENV):
     else:
         raise Exception(data)
 
-def last_order_is_over(order_status):
+def last_order_finished(order_status):
     #return order_status in ['NONE','UNSUBMITTED','SUBMIT_FAILED','FILLED_ALL','CANCELLED_PART','CANCELLED_ALL','FAILED','DISABLED','DELETED']
-    return order_status in [OrderStatus.NONE, OrderStatus.UNSUBMITTED, OrderStatus.SUBMIT_FAILED, \
-                            OrderStatus.FILLED_ALL, OrderStatus.CANCELLED_PART, OrderStatus.CANCELLED_ALL, \
-                            OrderStatus.FAILED, OrderStatus.DISABLED, OrderStatus.DELETED, \
+    return order_status in [OrderStatus.FILLED_ALL, OrderStatus.UNSUBMITTED, OrderStatus.SUBMIT_FAILED, \
+                            OrderStatus.FILLED_ALL, OrderStatus.CANCELLED_ALL, \
+                            OrderStatus.FAILED, OrderStatus.DISABLED, OrderStatus.DELETED,\
                             None #未查询到状态时，返回为None
                             ]
+
+def sell_done(order_status, trade_side):
+    return trade_side == TrdSide.SELL and order_status in [
+                            OrderStatus.FILLED_ALL, 
+                            ]
+
 def is_validation(num):
     if isinstance(eval(num), float) or isinstance(eval(num), int):
         return True
