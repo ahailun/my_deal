@@ -160,7 +160,7 @@ def real_time_price(quote_ctx, stock_num):
         else: 
             firstCodeInfo = cur_price_df.iloc[0]
             tmp_prc =float(firstCodeInfo.iat[4])
-            finnal_price = round(tmp_prc, 2) # 小数点后面取两位
+            finnal_price = round(tmp_prc, 3) # 小数点后面取三位
             log_2_file.info('查询到实时价格为{},转换后的价格为{}。'.format(tmp_prc, finnal_price))
             return finnal_price
             #return cur_price_df['pl_val'].item()
