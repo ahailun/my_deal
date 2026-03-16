@@ -65,12 +65,16 @@ def get_cur_month_deal_total(trd_ctx, pwd_unlock, log_2_file, start_tm=None, end
     else:
         log_2_file.error('请求历史成交数据错误:'+data)
 
-def get_last_order_status(trd_ctx, code, orderid, pwd_unlock, TRD_ENV):
+def get_last_order_status(trd_ctx, code, orderid, st, pwd_unlock, TRD_ENV):
     # time.sleep(1) # 下单后等待1s再查询订单状态
-    if orderid: 
+    
+    # 按照'orderid'筛选
+    if orderid:  
         ret, data = trd_ctx.order_list_query(order_id=orderid, trd_env=TRD_ENV, refresh_cache=True)
-    else:
-        start_tm = time.strftime("2026-03-01 00:00:00",time.localtime()) #目的是尽量包含所有该支股票的信息
+    
+    # 按照'code+起止时间'筛选
+    else: 
+        start_tm = st # 港股：以程序开始的时间作为筛选起始时间。 美股有问题吗？
         end_tm = time.strftime("%Y-%m-%d %X",time.localtime())
         ret, data = trd_ctx.order_list_query(code=code, trd_env=TRD_ENV, start=start_tm, end=end_tm)
     if ret == 0:
@@ -91,6 +95,11 @@ def last_order_finished(order_status):
                             OrderStatus.FILLED_ALL, OrderStatus.CANCELLED_ALL, \
                             OrderStatus.FAILED, OrderStatus.DISABLED, OrderStatus.DELETED,\
                             None #未查询到状态时，返回为None
+                            ]
+
+def buy_done(order_status, trade_side):
+    return trade_side == TrdSide.BUY and order_status in [
+                            OrderStatus.FILLED_ALL, 
                             ]
 
 def sell_done(order_status, trade_side):
