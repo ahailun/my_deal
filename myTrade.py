@@ -14,7 +14,7 @@ from stratergy.stratergy1 import get_high_turnover_stocks
 from common import is_HK_mkt, is_US_mkt, get_code_list_type, get_last_order_status, get_mkt, \
                     last_order_finished, unlock, myYjNow, is_validation, MAX_STOCKS_PER_REQUEST, \
                     PWD_UNLOCK, NEED_SUBSCRIBE, CAN_NOT_SUBSCRIBE, NEED_NOT_SUBSCRIBE, get_dynamic_qty, \
-                    avalible_cash, sell_done
+                    avalible_cash, sell_done, buy_done
 
 lock=threading.Lock()
 
@@ -140,6 +140,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
                 log_2_file.info('由于没有达到盈利目标({:.1f}-{:.1f}-{:.1f}-{:.1f}={:.1f})或止损目标({:.1f}%)，继续等待。'.format(
                                 plVal_or_None,
                                 meibi_zhuan,
+                                YJ,
                                 YJ,
                                 plVal_or_None - float(meibi_zhuan) - YJ - YJ,
                                 plRatio
