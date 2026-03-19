@@ -245,6 +245,7 @@ def pre_deal(mbz, zsx, log_2_file):
             the_code_for_1st_stratergy = get_high_turnover_stocks(quote_ctx, log_2_file)   
             if the_code_for_1st_stratergy:
                 sorted_data = sorted(the_code_for_1st_stratergy, key=lambda x: x[1], reverse=True)
+                log_2_file.info(f'目标股票: {sorted_data}')
                 code_str = sorted_data[0][0] # HK.00042
                 code_str = code_str[3:]
                 break
