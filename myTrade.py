@@ -244,7 +244,8 @@ def pre_deal(mbz, zsx, log_2_file):
             #方案一：涨幅百分比前五名且成交额大于指定数值
             the_code_for_1st_stratergy = get_high_turnover_stocks(quote_ctx, log_2_file)   
             if the_code_for_1st_stratergy:
-                code_str = the_code_for_1st_stratergy[0] # HK.00042
+                sorted_data = sorted(the_code_for_1st_stratergy, key=lambda x: x[1], reverse=True)
+                code_str = sorted_data[0][0] # HK.00042
                 code_str = code_str[3:]
                 break
             else:
