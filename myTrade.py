@@ -73,19 +73,19 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
                 ksjy_btn['state'] =NORMAL 
             raise Exception('用户暂停了程序交易.....')
         
-        realTimePrice = real_time_price(quote_ctx, code)
-        now_qty = get_dynamic_qty(trd_ctx, code, realTimePrice, TRD_ENV)
+        ask1, _ = get_ask_and_bid(quote_ctx, code)
+        now_qty = get_dynamic_qty(trd_ctx, code, ask1, TRD_ENV)
         if now_qty == 0:
             free_cash = avalible_cash(trd_ctx, TRD_ENV, log_2_file)
             log_2_file.info('{}可用资金[{}]太少,无法交易该股票[{}].'.format(TRD_ENV, free_cash, code))
             raise Exception('{}可用资金[{}]太少,无法交易该股票[{}].'.format(TRD_ENV, free_cash, code))
         qty_or_None = now_qty #自动计算可以购买的数量
-        log_2_file.info('准备以价格[{}]买入[{}]股票[{}]支,'.format(realTimePrice, code, qty_or_None))
-        ret, data = trd_ctx.place_order(realTimePrice, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
+        log_2_file.info('准备以价格[{}]买入[{}]股票[{}]支,'.format(ask1, code, qty_or_None))
+        ret, data = trd_ctx.place_order(ask1, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
         if ret == RET_OK:
             last_order_time = time.time()
             last_order_id = data['order_id'][0]
-            log_2_file.info('已下单购买，订单号:{}, 购买价格{}，购买数量{}。'.format(last_order_id, realTimePrice, qty_or_None))
+            log_2_file.info('已下单购买，订单号:{}, 购买价格{}，购买数量{}。'.format(last_order_id, ask1, qty_or_None))
         else:
             # lastErrMsg = data['last_err_msg'].item()#想不起来为什么这么写
             log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
@@ -110,15 +110,15 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
             
             # 若达到每笔赚目标则以当前价格卖掉
             if plVal_or_None - float(meibi_zhuan) - YJ - YJ > 0:
-                realTimePrice = real_time_price(quote_ctx, code)
+                _, bid1 = get_ask_and_bid(quote_ctx, code)
                 log_2_file.info('到达每笔赚的目标，准备以价格[{}]卖出[{}]数量[{}],盈亏金额:{}'.format(\
-                                realTimePrice, code, can_sell_qty, plVal_or_None))
-                ret, data = trd_ctx.place_order(realTimePrice, can_sell_qty, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
+                                bid1, code, can_sell_qty, plVal_or_None))
+                ret, data = trd_ctx.place_order(bid1, can_sell_qty, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret == RET_OK:
                     last_order_time = time.time()
                     last_order_id = data['order_id'][0]
-                    last_sell_price = realTimePrice
-                    log_2_file.info('下单成功，订单号:{}, 卖出价格{}，卖出数量{}，挂单类型{}.'.format(last_order_id, realTimePrice, can_sell_qty, TrdSide.SELL))
+                    last_sell_price = bid1
+                    log_2_file.info('下单成功，订单号:{}, 卖出价格{}，卖出数量{}，挂单类型{}.'.format(last_order_id, bid1, can_sell_qty, TrdSide.SELL))
                 else:
                     #lastErrMsg = data['last_err_msg'].item()
                     log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
@@ -127,12 +127,12 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
             # 若超过止损线则以当前价格卖掉
             elif  0 >=  0-zhi_sun_xian and 0-zhi_sun_xian >= plRatio: #两个参数为负数
                 log_2_file.warn('当前交易单的亏损比例为：{:.1f}%，超过止损线：{}，准备挂单卖出。'.format(plRatio, zhi_sun_xian))
-                realTimePrice = real_time_price(quote_ctx, code)
-                ret, data = trd_ctx.place_order(realTimePrice, can_sell_qty, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
+                _, bid1 = get_ask_and_bid(quote_ctx, code)
+                ret, data = trd_ctx.place_order(bid1, can_sell_qty, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret==RET_OK:
                     last_order_id = data['order_id'][0]
-                    last_sell_price = realTimePrice
-                    log_2_file.info('挂单成功，订单号:{}, 卖价{}，数量{}，挂单类型{}'.format(last_order_id, realTimePrice, can_sell_qty, TrdSide.SELL))
+                    last_sell_price = bid1
+                    log_2_file.info('挂单成功，订单号:{}, 卖价{}，数量{}，挂单类型{}'.format(last_order_id, bid1, can_sell_qty, TrdSide.SELL))
                 else:
                     log_2_file.info('挂单失败,失败原因{}，发送微信通知'.format(data))
             
@@ -147,10 +147,10 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
                             ))
         
 
-def real_time_price(quote_ctx, stock_num):
+def get_ask_and_bid(quote_ctx, stock_num):
     '''
-    若持有该股票，则查询该股票实时价格
-    返回 406.0 <class 'float'>
+    查询该股票的摆盘数据，获取卖一和买一
+    返回 1.234, 5.678 <class 'float'>
     '''
     subscribe_obj = SubsCribe(quote_ctx, stock_num, writer_handler=log_2_file)
     subscribe_obj.query_my_subscription()
@@ -159,22 +159,11 @@ def real_time_price(quote_ctx, stock_num):
     if subscribe_obj.sub_status == CAN_NOT_SUBSCRIBE:
         subscribe_obj.unsubscribe_mystock_all()
         subscribe_obj.subscribe_mystock()
-    ret, cur_price_df = subscribe_obj.quote_ctx.get_stock_quote(get_code_list_type(stock_num)[0])
-
-    if ret == RET_OK:
-        if len(cur_price_df) == 0:
-            log_2_file.error('无法查询到股票{}的实时价格。'.format(stock_num))
-            raise Exception('无法查询到股票{}的实时价格。'.format(stock_num))
-        else: 
-            firstCodeInfo = cur_price_df.iloc[0]
-            tmp_prc =float(firstCodeInfo.iat[4])
-            finnal_price = round(tmp_prc, 3) # 小数点后面取三位
-            log_2_file.info('查询到实时价格为{},转换后的价格为{}。'.format(tmp_prc, finnal_price))
-            return finnal_price
-            #return cur_price_df['pl_val'].item()
-    else:
-        log_2_file.error('查询到股票{code_name}实时价格时发生错误:{errorinfo}。'.format(code_name=stock_num, errorinfo=cur_price_df))
-        raise Exception('查询到股票{code_name}实时价格时发生错误:{errorinfo}。'.format(code_name=stock_num, errorinfo=cur_price_df))
+    ret, data = subscribe_obj.quote_ctx.get_order_book(get_code_list_type(stock_num)[0], num=1)
+    if ret != RET_OK:
+        log_2_file.error('查询股票{code_name}摆盘数据时发生错误:{errorinfo}。'.format(code_name=stock_num, errorinfo=data))
+        raise Exception('查询股票{code_name}摆盘数据时发生错误:{errorinfo}。'.format(code_name=stock_num, errorinfo=data))
+    return float(data['Ask'][0][0]), float(data['Bid'][0][0])
 
 def i_have_the_stock(quote_ctx, stock_num, log_2_file):
     '''
