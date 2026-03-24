@@ -65,7 +65,6 @@ def get_high_turnover_stocks(quote_ctx, log_2_file, threshold=1000000, plate_cod
     if ret == RET_OK:
         result_codes = []
         for _, row in data.iterrows():
-            log_2_file.info(f"{row['code']}的成交额为{row['turnover']}")
             if row['sec_status']== SecurityStatus.NORMAL and row['turnover'] > threshold:
                 result_codes.append([row['code'], float(row['turnover'])])
         return result_codes
