@@ -252,12 +252,13 @@ def pre_deal(mbz, zsx, log_2_file):
         #main(test, 30, 15, trd_ctx, quote_ctx, int(mbz), code_str, int(zsx), int(gmsl))
     except Exception as e:
         if "成功" in str(e):
-            log_2_file.error('[%s].' % str(e))
+            log_2_file.info('[%s].' % str(e))
         else:
             log_2_file.error('遇到异常[%s].' % str(e))
+
+        log_2_file.info('关闭交易连接和查询连接')
         if trd_ctx:
             trd_ctx.close()
-            log_2_file.info('关闭交易连接和查询连接')
         if quote_ctx:
             quote_ctx.close()
         ksjy_btn['state'] = NORMAL
