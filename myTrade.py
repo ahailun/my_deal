@@ -9,7 +9,7 @@ from tkinter import messagebox as tkMessageBox
 from logger import Logger
 from datetime import datetime, timedelta, date
 from subscribe import SubsCribe
-from stratergy.stratergy2 import get_largest_turnover_resumed_stock
+from stratergy.stratergy2 import get_largest_volume_resumed_stock
 from stratergy.stratergy1 import get_high_turnover_stocks
 from common import is_HK_mkt, is_US_mkt, get_code_list_type, get_last_order_status, get_mkt, \
                     last_order_finished, unlock, myYjNow, is_validation, MAX_STOCKS_PER_REQUEST, \
@@ -209,6 +209,7 @@ def i_have_the_stock(quote_ctx, stock_num, log_2_file):
         tempinfo = tmp_stock_dict[dst_stock_num]
         #return (True, data['pl_val'].item(),  data['qty'].item(), data['pl_ratio'].item())
         return (True, float(tempinfo[0]),int(tempinfo[1]),float(tempinfo[2]),float(tempinfo[3])) # 持有
+    return (False, None, None, None, None) # 未持有
     
 
 def pre_deal(mbz, zsx, log_2_file):
@@ -223,24 +224,19 @@ def pre_deal(mbz, zsx, log_2_file):
     from futu import OpenQuoteContext 
     quote_ctx = OpenQuoteContext(host='127.0.0.1', port=11111)
 
-    # 方案二：查询当天复牌股票中交易量最大的一支
-    the_code_for_2nd_stratergy = get_largest_turnover_resumed_stock(quote_ctx, log_2_file) 
-    if the_code_for_2nd_stratergy:
-        code_str =  the_code_for_2nd_stratergy
-    else:
-        log_2_file.warn(f"未找到符合【复牌】定义的股票,将按照涨幅选股。")
-        while True:
-            #方案一：涨幅百分比前五名且成交额大于指定数值
-            the_code_for_1st_stratergy = get_high_turnover_stocks(quote_ctx, log_2_file)   
-            if the_code_for_1st_stratergy:
-                sorted_data = sorted(the_code_for_1st_stratergy, key=lambda x: x[1], reverse=True)
-                log_2_file.info(f'涨幅前五的股票及成交额: {sorted_data}')
-                code_str = sorted_data[0][0] # HK.00042
-                code_str = code_str[3:]
-                break
-            else:
-                time.sleep(3) # 防止频率限制
-                log_2_file.warn(f"持续寻找涨幅前五的股票数据...")
+
+    while True:
+        #方案一：涨幅百分比前五名且成交额大于指定数值
+        the_code_for_1st_stratergy = get_high_turnover_stocks(quote_ctx, log_2_file)   
+        if the_code_for_1st_stratergy:
+            sorted_data = sorted(the_code_for_1st_stratergy, key=lambda x: x[1], reverse=True)
+            log_2_file.info(f'目标股票: {sorted_data}')
+            code_str = sorted_data[0][0] # HK.00042
+            code_str = code_str[3:]
+            break
+        else:
+            time.sleep(3) # 防止频率限制
+            log_2_file.warn(f"持续寻找涨幅前五的股票数据...")
     mktInfo = get_mkt(code_str)
     trd_ctx = mktInfo.get('trd_ctx')(host='127.0.0.1', port=11111)
     
@@ -255,10 +251,9 @@ def pre_deal(mbz, zsx, log_2_file):
             log_2_file.info('[%s].' % str(e))
         else:
             log_2_file.error('遇到异常[%s].' % str(e))
-
-        log_2_file.info('关闭交易连接和查询连接')
         if trd_ctx:
             trd_ctx.close()
+            log_2_file.info('关闭交易连接和查询连接')
         if quote_ctx:
             quote_ctx.close()
         ksjy_btn['state'] = NORMAL
@@ -343,7 +338,7 @@ if __name__ == "__main__":
     mbz_default = StringVar()
     mbz_entry = Entry(root, textvariable=mbz_default, width=10)  # 重命名以保持一致性
     mbz_entry.grid(row=0, column=2, padx=(5, 5), pady=15, sticky=W)
-    mbz_default.set("500")
+    mbz_default.set("900")
     
     # 止损线
     zsx = Label(root, text='止损线：', font=("黑体", 12, "bold"))
@@ -352,7 +347,7 @@ if __name__ == "__main__":
     defalut_zsx = StringVar()
     zsx_entry = Entry(root, textvariable=defalut_zsx, width=8)
     zsx_entry.grid(row=0, column=3, padx=(5, 2), pady=10, sticky=W)
-    defalut_zsx.set("2")
+    defalut_zsx.set("9")
     
     zsx_bfh = Label(root, text='%')
     zsx_bfh.grid(row=0, column=3, padx=(50, 0), pady=15, sticky=W)
