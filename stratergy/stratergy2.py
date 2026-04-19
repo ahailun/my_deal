@@ -196,14 +196,14 @@ def load_snapshot_from_local(date_str):
         return None
 
 
-def get_largest_turnover_resumed_stock(quote_ctx, log_2_file, target_date_str=None):
+def get_largest_volume_resumed_stock(quote_ctx, log_2_file, target_date_str=None):
     """
     主函数：获取港股市场在指定交易日（默认为当天）的复牌股票列表，
            并从中找出交易量最大的那一支。
     
     Returns:
         dict or None: 交易量最大的复牌股票信息，格式为：
-                      {'code': 'HK.00700', 'name': '腾讯控股', 'turnover': 10000000}
+                      {'code': 'HK.00700', 'name': '腾讯控股', 'volume': 10000000}
                       如果无复牌股票或查询失败，则返回 None。
     """
     try:
@@ -279,25 +279,24 @@ def get_largest_turnover_resumed_stock(quote_ctx, log_2_file, target_date_str=No
         condition_resumed = (df_merge['sec_status_t1'] == SecurityStatus.SUSPENDED) & \
                             (df_merge['sec_status'] == SecurityStatus.NORMAL)
         resumed_stocks_df = df_merge[condition_resumed].reset_index()
-        log_2_file.info(f"{target_date_str} 港股【复牌】股票数量: {len(resumed_stocks_df)}")
+        log_2_file.info(f"{target_date_str} 港股准确【复牌】股票数量: {len(resumed_stocks_df)}")
         
         # Step 7: 从复牌股票中找出交易量最大的那一支
         if resumed_stocks_df.empty:
             log_2_file.info(f"今日无复牌股票，无法比较交易量。")
             return None
-        # 按turnover(成交额)降序排序
+        
+        # 按 volume（成交量）降序排序
         resumed_stocks_df_sorted = resumed_stocks_df.sort_values(by='turnover', ascending=False)
-        largest_turnover_stock = resumed_stocks_df_sorted.iloc[0]
+        largest_volume_stock = resumed_stocks_df_sorted.iloc[0]
         result = {
-            'code': largest_turnover_stock['code'],
-            'name': largest_turnover_stock['name'],
-            'turnover': int(largest_turnover_stock['turnover'])  # 转换为整数类型
+            'code': largest_volume_stock['code'],
+            'name': largest_volume_stock['name'],
+            'turnover': int(largest_volume_stock['turnover'])  # 转换为整数类型
         }
-        if result['volume'] >= 50000000: # 5千万
-            log_2_file.info(f"交易量最大的复牌股票: {result['code']} {result['name']}, 成交额: {result['volume']:,}")
+        log_2_file.info(f"交易量最大的复牌股票: {result['code']} {result['name']}, 成交额: {result['turnover']:,} ")
+        if result['turnover'] > 50000000:
             return result['code']
-        log_2_file.info(f"交易量最大的复牌股票: {result['code']} {result['name']}, 成交额: {result['volume']:,}小于5千万.")
-        return None
     except Exception as e:
         log_2_file.error(f"程序执行异常: {e}")
         import traceback
@@ -312,13 +311,13 @@ if __name__ == '__main__':
     # 注意：这里需要实际的Futu API连接
     try:
         quote_ctx = OpenQuoteContext(host='127.0.0.1', port=11111)
-        largest_stock = get_largest_turnover_resumed_stock(quote_ctx, log_2_file)
+        largest_stock = get_largest_volume_resumed_stock(quote_ctx, log_2_file)
         
         if largest_stock:
             print(f"\n📈 交易量最大的复牌股票详情：")
             print(f"股票代码: {largest_stock['code']}")
             print(f"股票名称: {largest_stock['name']}")
-            print(f"当日成交额: {largest_stock['turnover']:,}")
+            print(f"当日成交量: {largest_stock['volume']:,} 股")
         else:
             print("⚠️ 未找到复牌股票，或查询失败。")
     except Exception as e:
