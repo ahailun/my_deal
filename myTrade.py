@@ -106,13 +106,12 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
                 log_2_file.warn('已持仓股票{}，待挂单后程序会自动暂停，请等待。'.format(code))
             
             log_2_file.info('股票买单结束，准备卖出')
-            YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, can_sell_qty, log_2_file, costPrice, is_debug)
             
             # 若达到每笔赚目标则以当前价格卖掉
             if plRatio >= float(meibi_zhuan):
                 _, bid1 = get_ask_and_bid(quote_ctx, code)
-                log_2_file.info('到达每笔赚的目标，准备以价格[{}]卖出[{}]数量[{}],盈亏金额:{}'.format(\
-                                bid1, code, can_sell_qty, plVal_or_None))
+                log_2_file.info('到达每笔赚的目标，准备以价格[{}]卖出[{}]数量[{}],盈亏比例及金额:[{}% - {}]'.format(\
+                                bid1, code, can_sell_qty, plRatio, plVal_or_None))
                 ret, data = trd_ctx.place_order(bid1, can_sell_qty, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
                 if ret == RET_OK:
                     last_order_time = time.time()
@@ -135,9 +134,20 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
                     log_2_file.info('挂单成功，订单号:{}, 卖价{}，数量{}，挂单类型{}'.format(last_order_id, bid1, can_sell_qty, TrdSide.SELL))
                 else:
                     log_2_file.info('挂单失败,失败原因{}，发送微信通知'.format(data))
-            
             else:
-                log_2_file.info('当前涨跌幅({:.1f})没有达到盈利或止损({:.1f}% ~ {:.1f}%)，继续等待。'.format(plRatio, meibi_zhuan, zhi_sun_xian))
+                now = datetime.now()
+                if now.hour == 15 and now.minute >= 55:
+                    log_2_file.warn('当前时间马上收盘，准备清仓。')
+                    _, bid1 = get_ask_and_bid(quote_ctx, code)
+                    ret, data = trd_ctx.place_order(bid1, can_sell_qty, get_code_list_type(code)[0], TrdSide.SELL, order_type=OrderType.NORMAL, trd_env=TRD_ENV)
+                    if ret==RET_OK:
+                        last_order_id = data['order_id'][0]
+                        last_sell_price = bid1
+                        log_2_file.info('挂单成功，订单号:{}, 卖价{}，数量{}，挂单类型{}'.format(last_order_id, bid1, can_sell_qty, TrdSide.SELL))
+                    else:
+                        log_2_file.warn('挂单失败,失败原因{}，发送微信通知'.format(data))
+                else:
+                    log_2_file.info('当前涨跌幅({:.1f})没有达到盈利或止损({:.1f}% ~ {:.1f}%)，继续等待。'.format(plRatio, meibi_zhuan, zhi_sun_xian))
         
 
 def get_ask_and_bid(quote_ctx, stock_num):
