@@ -109,7 +109,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
             YJ = myYjNow(trd_ctx, PWD_UNLOCK, code, can_sell_qty, log_2_file, costPrice, is_debug)
             
             # 若达到每笔赚目标则以当前价格卖掉
-            if plVal_or_None - float(meibi_zhuan) - YJ - YJ > 0:
+            if plRatio >= float(meibi_zhuan):
                 _, bid1 = get_ask_and_bid(quote_ctx, code)
                 log_2_file.info('到达每笔赚的目标，准备以价格[{}]卖出[{}]数量[{}],盈亏金额:{}'.format(\
                                 bid1, code, can_sell_qty, plVal_or_None))
@@ -137,14 +137,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
                     log_2_file.info('挂单失败,失败原因{}，发送微信通知'.format(data))
             
             else:
-                log_2_file.info('由于没有达到盈利目标({:.1f}-{:.1f}-{:.1f}-{:.1f}={:.1f})或止损目标({:.1f}%)，继续等待。'.format(
-                                plVal_or_None,
-                                meibi_zhuan,
-                                YJ,
-                                YJ,
-                                plVal_or_None - float(meibi_zhuan) - YJ - YJ,
-                                plRatio
-                            ))
+                log_2_file.info('当前涨跌幅({:.1f})没有达到盈利或止损({:.1f}% ~ {:.1f}%)，继续等待。'.format(plRatio, meibi_zhuan, zhi_sun_xian))
         
 
 def get_ask_and_bid(quote_ctx, stock_num):
@@ -307,7 +300,6 @@ if __name__ == "__main__":
     # 获取屏幕尺寸
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
-    
     # 计算窗口位置使其居中
     x = (screen_width - window_width) // 2
     y = (screen_height - window_height) // 2
@@ -332,44 +324,39 @@ if __name__ == "__main__":
     
     # ==================== 第0行：交易参数设置 ====================
     # 每笔赚
-    mbz = Label(root, text='每笔赚:', font=("黑体", 12, "bold"))
+    mbz = Label(root, text='目标涨幅:', font=("黑体", 12, "bold"))
     mbz.grid(row=0, column=1, padx=(10, 5), pady=15, sticky=E)
-    
     mbz_default = StringVar()
-    mbz_entry = Entry(root, textvariable=mbz_default, width=10)  # 重命名以保持一致性
-    mbz_entry.grid(row=0, column=2, padx=(5, 5), pady=15, sticky=W)
-    mbz_default.set("900")
+    mbz_entry = Entry(root, textvariable=mbz_default, width=8)  # 重命名以保持一致性
+    mbz_entry.grid(row=0, column=2, padx=(5, 2), pady=15, sticky=W)
+    mbz_default.set("1")
+    mbz_bfh = Label(root, text='%')
+    mbz_bfh.grid(row=0, column=2, padx=(50, 0), pady=15, sticky=W)
     
     # 止损线
     zsx = Label(root, text='止损线：', font=("黑体", 12, "bold"))
     zsx.grid(row=0, column=2, padx=(20, 5), pady=15, sticky=E)
-    
     defalut_zsx = StringVar()
     zsx_entry = Entry(root, textvariable=defalut_zsx, width=8)
     zsx_entry.grid(row=0, column=3, padx=(5, 2), pady=10, sticky=W)
     defalut_zsx.set("9")
-    
     zsx_bfh = Label(root, text='%')
     zsx_bfh.grid(row=0, column=3, padx=(50, 0), pady=15, sticky=W)
     
     # ==================== 第1行：交易控制 ====================
     # 交易环境选择
     env = StringVar()
-    
     env_label = Label(root, text='交易环境：', font=("黑体", 12, "bold"))
     env_label.grid(row=1, column=0, padx=(20, 5), pady=15, sticky=E)
-    
     cmb_env = ttk.Combobox(root, font=("黑体", 12), textvariable=env, width=12)
     cmb_env['value'] = ('真实交易', '模拟交易')
     cmb_env.current(0)
     cmb_env.grid(row=1, column=1, padx=(0, 20), pady=15, sticky=W)
     cmb_env.bind("<<ComboboxSelected>>", callback)
-    
     # 开始交易按钮
     ksjy_btn = Button(root, text="开始交易", font=("黑体", 12, "bold"), 
                      command=deal_thread, width=12, height=1)
     ksjy_btn.grid(row=1, column=2, padx=(0, 15), pady=15, ipadx=5)
-    
     # 暂停交易按钮
     tzjy_btn = Button(root, text="暂停交易", state='disabled', 
                      font=("黑体", 12, "bold"), command=stop_thread, width=12, height=1)
@@ -385,7 +372,6 @@ if __name__ == "__main__":
     # 滚动条
     scrollbar = Scrollbar(log_frame, orient=VERTICAL)
     scrollbar.grid(row=0, column=1, sticky=N+S, pady=2)
-    
     # 列表框
     listbox = Listbox(log_frame, width=100, height=23, 
                      font=("Consolas", 10), bg="#f5f5f5",
@@ -393,10 +379,8 @@ if __name__ == "__main__":
                      selectbackground="#2196F3", selectforeground="white")
     listbox.grid(row=0, column=0, sticky=E+W+N+S, padx=(5, 0), pady=5)
     listbox.insert(END, '系统启动完成，等待用户操作...')
-    
     # 滚动条配置
     scrollbar.config(command=listbox.yview)
-    
     # 创建日志记录器
     log_2_file = Logger(listbox=listbox)
     
