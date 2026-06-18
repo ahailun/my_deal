@@ -77,8 +77,8 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
         now_qty = get_dynamic_qty(trd_ctx, code, ask1, TRD_ENV)
         if now_qty == 0:
             free_cash = avalible_cash(trd_ctx, TRD_ENV, log_2_file)
-            log_2_file.info('{}可用资金[{}]太少,无法交易该股票[{}].'.format(TRD_ENV, free_cash, code))
-            raise Exception('{}可用资金[{}]太少,无法交易该股票[{}].'.format(TRD_ENV, free_cash, code))
+            log_2_file.info('{}可用资金[{}]太少,不够交易一手该股票[{}].'.format(TRD_ENV, free_cash, code))
+            raise Exception('{}可用资金[{}]太少,不够交易一手该股票[{}].'.format(TRD_ENV, free_cash, code))
         qty_or_None = now_qty #自动计算可以购买的数量
         log_2_file.info('准备以价格[{}]买入[{}]股票[{}]支,'.format(ask1, code, qty_or_None))
         ret, data = trd_ctx.place_order(ask1, qty_or_None, get_code_list_type(code)[0], TrdSide.BUY, order_type=OrderType.NORMAL, trd_env=TRD_ENV)

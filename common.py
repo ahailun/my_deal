@@ -1,7 +1,7 @@
 import re
 import time
 from logger import Logger
-from futu import OpenUSTradeContext, OpenHKTradeContext, OpenQuoteContext, OrderStatus, \
+from futu import OpenUSTradeContext, OpenSecTradeContext, OpenHKTradeContext, OpenQuoteContext, OrderStatus, \
                  RET_OK,OrderType, Currency, TrdSide
 
 # 定义全局常量：单次请求最大股票数量
@@ -21,7 +21,7 @@ PWD_UNLOCK = '799246'
 # US_STOCK = {'MKT':'US', 'trd_ctx':OpenUSTradeContext(host='127.0.0.1', port=11111),'quote_ctx':OpenQuoteContext(host='127.0.0.1', port=11111), 'LASTTIME_BUY_PRIC':'cost_price'}
 # HK_STOCK = {'MKT':'HK', 'trd_ctx':OpenHKTradeContext(host='127.0.0.1', port=11111), 'quote_ctx':OpenQuoteContext(host='127.0.0.1', port=11111), 'LASTTIME_BUY_PRIC':'cost_price'}
 US_STOCK = {'MKT':'US', 'trd_ctx':OpenUSTradeContext, 'quote_ctx':OpenQuoteContext, 'LASTTIME_BUY_PRIC':'cost_price'}
-HK_STOCK = {'MKT':'HK', 'trd_ctx':OpenHKTradeContext, 'quote_ctx':OpenQuoteContext, 'LASTTIME_BUY_PRIC':'cost_price'}
+HK_STOCK = {'MKT':'HK', 'trd_ctx':OpenSecTradeContext, 'quote_ctx':OpenQuoteContext, 'LASTTIME_BUY_PRIC':'cost_price'}
 
 US_is_price_package1 = True
 HK_is_price_package1 = True
