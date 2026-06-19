@@ -89,6 +89,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
         else:
             # lastErrMsg = data['last_err_msg'].item()#想不起来为什么这么写
             log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
+            raise Exception('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
     
     # 第一次购买后，全部撮合完成 或者 没有全部撮合完成
     else:
@@ -121,6 +122,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
                 else:
                     #lastErrMsg = data['last_err_msg'].item()
                     log_2_file.error('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
+                    raise Exception('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
                     #待增加微信通知功能
             
             # 若超过止损线则以当前价格卖掉
@@ -134,6 +136,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
                     log_2_file.info('挂单成功，订单号:{}, 卖价{}，数量{}，挂单类型{}'.format(last_order_id, bid1, can_sell_qty, TrdSide.SELL))
                 else:
                     log_2_file.info('挂单失败,失败原因{}，发送微信通知'.format(data))
+                    raise Exception('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
             else:
                 now = datetime.now()
                 if now.hour == 15 and now.minute >= 55:
@@ -146,6 +149,7 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
                         log_2_file.info('挂单成功，订单号:{}, 卖价{}，数量{}，挂单类型{}'.format(last_order_id, bid1, can_sell_qty, TrdSide.SELL))
                     else:
                         log_2_file.warn('挂单失败,失败原因{}，发送微信通知'.format(data))
+                        raise Exception('下单失败，原因:{lastErrMsg}.'.format(lastErrMsg=data))
                 else:
                     log_2_file.info('当前涨跌幅({:.1f})没有达到盈利或止损({:.1f}% ~ {:.1f}%)，继续等待。'.format(plRatio, meibi_zhuan, zhi_sun_xian))
         
