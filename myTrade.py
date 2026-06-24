@@ -75,8 +75,9 @@ def start_to_deal(trd_ctx, quote_ctx, meibi_zhuan, code, zhi_sun_xian, log_2_fil
         
         ask1, _ = get_ask_and_bid(quote_ctx, code)
         now_qty = get_dynamic_qty(trd_ctx, code, ask1, TRD_ENV)
+        free_cash = avalible_cash(trd_ctx, TRD_ENV, log_2_file)
+        log_2_file.info('{}可用资金[{}].'.format(TRD_ENV, free_cash))
         if now_qty == 0:
-            free_cash = avalible_cash(trd_ctx, TRD_ENV, log_2_file)
             log_2_file.info('{}可用资金[{}]太少,不够交易一手该股票[{}].'.format(TRD_ENV, free_cash, code))
             raise Exception('{}可用资金[{}]太少,不够交易一手该股票[{}].'.format(TRD_ENV, free_cash, code))
         qty_or_None = now_qty #自动计算可以购买的数量
