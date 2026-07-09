@@ -244,7 +244,7 @@ def pre_deal(mbz, zsx, log_2_file):
             break
         else:
             time.sleep(3) # 防止频率限制
-            log_2_file.warn(f"持续寻找涨幅前五的股票数据...")
+            log_2_file.warn(f"没有找到成交额大于5千万的股票，持续寻找中...")
     mktInfo = get_mkt(code_str)
     trd_ctx = mktInfo.get('trd_ctx')(host='127.0.0.1', port=11111)
     

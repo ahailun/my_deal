@@ -37,7 +37,7 @@ def get_first_5codes_by_change_rate(quote_ctx, log_2_file, plate_code):
     return motherboard_list
 
 
-def get_high_turnover_stocks(quote_ctx, log_2_file, threshold=1000000, plate_code='HK.Motherboard'):
+def get_high_turnover_stocks(quote_ctx, log_2_file, threshold=50000000, plate_code='HK.Motherboard'):
     """
     筛选指定板块中涨幅前五且成交额大于门槛的股票
     Args:
